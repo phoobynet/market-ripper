@@ -2,59 +2,50 @@ package main
 
 import (
 	"context"
-	"errors"
 	"flag"
 	"github.com/alpacahq/alpaca-trade-api-go/v3/marketdata/stream"
-	"github.com/phoobynet/sip-observer/assets"
-	"github.com/phoobynet/sip-observer/config"
-	"github.com/phoobynet/sip-observer/reader"
-	"github.com/phoobynet/sip-observer/snapshots"
-	"github.com/phoobynet/sip-observer/writer"
+	"github.com/phoobynet/market-ripper/config"
+	"github.com/phoobynet/market-ripper/query"
+	"github.com/phoobynet/market-ripper/reader"
+	"github.com/phoobynet/market-ripper/snapshots"
+	"github.com/phoobynet/market-ripper/writer"
 	"log"
 	"os"
 	"os/signal"
+	"time"
 )
 
 var configurationFile string
 
 func main() {
-	if key := os.Getenv("APCA_API_KEY_ID"); key == "" {
-		log.Fatal(errors.New("APCA_API_KEY_ID is not set"))
-
-	}
-
-	if secret := os.Getenv("APCA_API_SECRET_KEY"); secret == "" {
-		log.Fatal(errors.New("APCA_API_SECRET_KEY is not set"))
-	}
+	config.ValidateEnv()
 
 	flag.StringVar(&configurationFile, "config", "config.toml", "Configuration file")
 
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, os.Interrupt)
 
-	configuration, err := config.Load(configurationFile)
+	configuration := config.Load(configurationFile)
+	log.Printf("%s", configuration)
 
-	if err != nil {
-		log.Fatal(err)
+	assetRepository := query.NewAssetRepository()
+
+	if assetRepository.Count() == 0 || assetRepository.IsStale(-24*time.Hour) {
+		assetReader := reader.NewAssetReader()
+		assets := assetReader.ReadAllActive()
+
+		assetWriter := writer.NewAssetWriter()
+		assetWriter.Write(assets)
 	}
-
-	log.Printf("Configuration: %+v\n\n", configuration)
-
-	allSymbols := assets.Load(context.TODO(), configuration)
 
 	snapshots.Load(context.TODO(), configuration, allSymbols)
 
-	readerCtx, readerCancel := context.WithCancel(context.Background())
-
-	sipReader, err := reader.NewSIPReader(readerCtx, configuration)
-
-	if err != nil {
-		log.Fatal(err)
-	}
+	cryptoReaderCtx, readerCancel := context.WithCancel(context.Background())
+	cryptoReader := reader.NewCryptoReader(cryptoReaderCtx, configuration)
 
 	writerCtx, writerCancel := context.WithCancel(context.Background())
 
-	sipWriter, err := writer.NewSIPWriter(writerCtx, configuration)
+	sipWriter, err := writer(writerCtx, configuration)
 
 	if err != nil {
 		log.Fatal(err)

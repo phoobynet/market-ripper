@@ -21,7 +21,7 @@ Set the following environment variables
 Install the packages
 
 ```bash
-go install github.com/phoobynet/sip-observer@latest
+go install github.com/phoobynet/market-ripper@latest
 ```
 
 Create `.toml` file, and decide what symbols you would like to include.  
@@ -46,10 +46,10 @@ db_lip_port = "9009"
 db_pg_port = "8812"
 ```
 
-Assuming you have a QuestDB server up and running, start `sip-observer`
+Assuming you have a QuestDB server up and running, start `market-ripper`
 
 ```bash
-sip-observer --config config.toml
+market-ripper --config config.toml
 ```
 
 

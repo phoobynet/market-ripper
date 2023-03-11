@@ -2,7 +2,7 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/.idea/sip-observer.iml" filepath="$PROJECT_DIR$/.idea/sip-observer.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/market-ripper.iml" filepath="$PROJECT_DIR$/.idea/market-ripper.iml" />
     </modules>
   </component>
 </project>

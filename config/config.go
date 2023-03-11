@@ -3,21 +3,24 @@ package config
 import (
 	"errors"
 	"fmt"
+	"github.com/alpacahq/alpaca-trade-api-go/v3/alpaca"
 	"github.com/pelletier/go-toml/v2"
-	"github.com/phoobynet/sip-observer/file"
-	"github.com/phoobynet/sip-observer/utils"
+	"github.com/phoobynet/market-ripper/file"
+	"github.com/phoobynet/market-ripper/utils"
+	"log"
 	"os"
 )
 
 type Config struct {
 	Title     string
 	Symbols   []string
+	Class     alpaca.AssetClass
 	DBHost    string `toml:"db_host"`
 	DBILPPort string `toml:"db_ilp_port"`
 	DBPGPort  string `toml:"db_pg_port"`
 }
 
-func Load(configPath string) (*Config, error) {
+func Load(configPath string) *Config {
 	file.MustExist(configPath)
 
 	var config *Config
@@ -25,26 +28,26 @@ func Load(configPath string) (*Config, error) {
 	data, err := os.ReadFile(configPath)
 
 	if err != nil {
-		return nil, err
+		log.Fatal(err)
 	}
 
 	err = toml.Unmarshal(data, &config)
 
 	if err != nil {
-		return nil, err
+		log.Fatal(err)
 	}
 
 	config.clean()
 
 	if err := config.validate(); err != nil {
-		return nil, err
+		log.Fatal(err)
 	}
 
-	return config, nil
+	return config
 }
 
 func (c *Config) String() string {
-	return fmt.Sprintf("title: %s, symbols: %v, db_host: %s, db_ilp_port: %s, db_pg_port: %s", c.Title, c.Symbols, c.DBHost, c.DBILPPort, c.DBPGPort)
+	return fmt.Sprintf("title: %s, class: %s, symbols: %d, db_host: %s, db_ilp_port: %s, db_pg_port: %s", c.Title, c.Class, len(c.Symbols), c.DBHost, c.DBILPPort, c.DBPGPort)
 }
 
 // clean removes any invalid characters from the ticker symbols, trims whitespace and converts to uppercase.
@@ -65,6 +68,12 @@ func (c *Config) clean() {
 func (c *Config) validate() error {
 	if c.Title == "" {
 		return errors.New("title is required")
+	}
+
+	if c.Class == "" {
+		return errors.New("class is required, either 'us_equity' or 'crypto'")
+	} else if (c.Class != "us_equity") && (c.Class != "crypto") {
+		return errors.New("class must be either 'us_equity' or 'crypto'")
 	}
 
 	if len(c.Symbols) == 0 {

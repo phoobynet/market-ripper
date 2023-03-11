@@ -1,4 +1,4 @@
-module github.com/phoobynet/sip-observer
+module github.com/phoobynet/market-ripper
 
 go 1.19
 

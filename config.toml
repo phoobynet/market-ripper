@@ -1,5 +1,7 @@
 title = "NASDAQ 100"
 
+class = "us_equity"
+
 symbols = [
    "*"
 ]
