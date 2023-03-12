@@ -1,6 +1,6 @@
-# Securities Information Processor (SIP) Observer
+# Market Ripper
 
-Using one or more symbols, SIP Observer will capture trades and bars.
+Captures trade's and bars from [Alpaca's Market Stream](https://alpaca.markets/data), writing the data to a [QuestDB](https://questdb.io/docs/) database
 
 In addition, snapshots and assets are downloaded on each restart.
 
@@ -27,7 +27,8 @@ go install github.com/phoobynet/market-ripper@latest
 Create `.toml` file, and decide what symbols you would like to include.  
 
 - `title` - Whatever you want it to be.
-- `symbols` - e.g. `"AAPL"`, etc. Note that `*` means everything (really hope your hardware is up to it).
+- `class` - Must be either `us_equity` or `crypto`
+- `symbols` - e.g. `"AAPL"`, etc. Note that `*` means everything.  The symbols must all be within a single class of financial instrument.
 - `db_host` - The host address of QuestDB
 - `db_ilp_port` - ILP ingestion port; the default is `9009`
 - `db_pg_port` - Postgres(ish) port; the default is `8812`
@@ -36,6 +37,8 @@ Create `.toml` file, and decide what symbols you would like to include.
 
 ```toml
 title = "Everything"
+
+class = "crypto"
 
 symbols = [
     "*",

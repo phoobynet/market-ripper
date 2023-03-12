@@ -22,7 +22,7 @@ type TradeWriter struct {
 }
 
 func NewTradeWriter() *TradeWriter {
-	writeTicker := time.NewTicker(5 * time.Second)
+	writeTicker := time.NewTicker(time.Second)
 	writeChan := make(chan []types.Trade, 10_000)
 
 	logTicker := time.NewTicker(time.Second * 5)
@@ -69,16 +69,11 @@ func (b *TradeWriter) copyBuffer() {
 	b.writeLock.Lock()
 	defer b.writeLock.Unlock()
 
-	fmt.Printf("inputBuffer size: %d:%p\n", len(b.inputBuffer), &b.inputBuffer)
 	tempBuffer := make([]types.Trade, len(b.inputBuffer))
 	copy(tempBuffer, b.inputBuffer)
-	fmt.Printf("tempBuffer size: %d\n", len(tempBuffer))
 
-	// Clear the input buffer
-	b.inputBuffer = b.inputBuffer[:0]
-	//b.inputBuffer = make([]types.Trade, 0)
+	b.inputBuffer = make([]types.Trade, 0)
 
-	// Send the buffer to the write channel
 	b.writeChan <- tempBuffer
 }
 
