@@ -54,6 +54,13 @@ func NewTradeWriter() *TradeWriter {
 	}
 }
 
+func (b *TradeWriter) Write(trade types.Trade) {
+	b.writeLock.Lock()
+	defer b.writeLock.Unlock()
+
+	b.inputBuffer = append(b.inputBuffer, trade)
+}
+
 func (b *TradeWriter) Close() {
 	b.writeTicker.Stop()
 	b.logTicker.Stop()

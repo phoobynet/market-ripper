@@ -54,6 +54,13 @@ func NewBarWriter() *BarWriter {
 	}
 }
 
+func (b *BarWriter) Write(bar types.Bar) {
+	b.writeLock.Lock()
+	defer b.writeLock.Unlock()
+
+	b.inputBuffer = append(b.inputBuffer, bar)
+}
+
 func (b *BarWriter) Close() {
 	b.writeTicker.Stop()
 	b.logTicker.Stop()

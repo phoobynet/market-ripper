@@ -21,6 +21,17 @@ type Snapshot struct {
 	DailyTimestamp    time.Time `json:"dt"`
 }
 
+func FromSnapshot(symbol string, snapshot interface{}) *Snapshot {
+	switch snapshot.(type) {
+	case *marketdata.CryptoSnapshot:
+		return FromCryptoSnapshot(symbol, snapshot.(*marketdata.CryptoSnapshot))
+	case *marketdata.Snapshot:
+		return FromEquitySnapshot(symbol, snapshot.(*marketdata.Snapshot))
+	default:
+		return nil
+	}
+}
+
 func FromCryptoSnapshot(symbol string, snapshot *marketdata.CryptoSnapshot) *Snapshot {
 	if symbol == "" {
 		return nil

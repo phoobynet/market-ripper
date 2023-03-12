@@ -1,7 +1,6 @@
 package reader
 
 import (
-	"context"
 	"github.com/alpacahq/alpaca-trade-api-go/v3/marketdata/stream"
 	"github.com/phoobynet/market-ripper/config"
 	"github.com/phoobynet/market-ripper/types"
@@ -12,7 +11,7 @@ type CryptoReader struct {
 	configuration *config.Config
 }
 
-func NewCryptoReader(ctx context.Context, configuration *config.Config) *CryptoReader {
+func NewCryptoReader(configuration *config.Config) *CryptoReader {
 	return &CryptoReader{
 		configuration: configuration,
 	}

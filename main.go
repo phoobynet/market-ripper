@@ -1,13 +1,12 @@
 package main
 
 import (
-	"context"
 	"flag"
-	"github.com/alpacahq/alpaca-trade-api-go/v3/marketdata/stream"
+	"github.com/alpacahq/alpaca-trade-api-go/v3/alpaca"
 	"github.com/phoobynet/market-ripper/config"
 	"github.com/phoobynet/market-ripper/query"
 	"github.com/phoobynet/market-ripper/reader"
-	"github.com/phoobynet/market-ripper/snapshots"
+	"github.com/phoobynet/market-ripper/types"
 	"github.com/phoobynet/market-ripper/writer"
 	"log"
 	"os"
@@ -28,6 +27,7 @@ func main() {
 	configuration := config.Load(configurationFile)
 	log.Printf("%s", configuration)
 
+	// ASSET loading...
 	assetRepository := query.NewAssetRepository()
 
 	if assetRepository.Count() == 0 || assetRepository.IsStale(-24*time.Hour) {
@@ -38,50 +38,50 @@ func main() {
 		assetWriter.Write(assets)
 	}
 
-	snapshots.Load(context.TODO(), configuration, allSymbols)
+	// SNAPSHOTS loading...
+	snapshotsRepository := query.NewSnapshotRepository(configuration)
+	snapshotsRepository.Truncate()
 
-	cryptoReaderCtx, readerCancel := context.WithCancel(context.Background())
-	cryptoReader := reader.NewCryptoReader(cryptoReaderCtx, configuration)
+	snapshots := reader.NewSnapshotReader(configuration, assetRepository).Read()
+	writer.NewSnapshotWriter(configuration).Write(snapshots)
 
-	writerCtx, writerCancel := context.WithCancel(context.Background())
+	reader.StartClients()
+	barWriter := writer.NewBarWriter()
+	tradeWriter := writer.NewTradeWriter()
+	var streamingTradesChan = make(chan types.Trade, 100_000)
+	var streamingBarsChan = make(chan types.Bar, 20_000)
 
-	sipWriter, err := writer(writerCtx, configuration)
+	if configuration.Class == alpaca.Crypto {
+		cryptoReader := reader.NewCryptoReader(configuration)
+		go func() {
+			cryptoReader.Subscribe(streamingTradesChan, streamingBarsChan)
 
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	var streamingTradesChan = make(chan stream.Trade, 100_000)
-	var streamingBarsChan = make(chan stream.Bar, 20_000)
-
-	go func() {
-		err := sipReader.Observe(streamingTradesChan, streamingBarsChan)
-
-		if err != nil {
-			log.Fatal(err)
-		} else {
-			log.Println("SIP observer started")
-		}
-
-		for {
-			select {
-			case t := <-streamingTradesChan:
-				sipWriter.WriteTrade(t)
-			case b := <-streamingBarsChan:
-				sipWriter.WriteBar(b)
-			case <-readerCtx.Done():
-				log.Println("Shutting down SIP Observer reader")
-				_ = sipReader.Disconnect()
-				return
-			case <-writerCtx.Done():
-				log.Println("Shutting down SIP Observer writer")
-				_ = sipWriter.Close()
-				return
+			for {
+				select {
+				case t := <-streamingTradesChan:
+					tradeWriter.Write(t)
+				case b := <-streamingBarsChan:
+					barWriter.Write(b)
+				}
 			}
-		}
-	}()
+		}()
+		<-quit
+		cryptoReader.Unsubscribe()
+	} else if configuration.Class == alpaca.USEquity {
+		equityReader := reader.NewEquityTradeReader(configuration)
+		go func() {
+			equityReader.Subscribe(streamingTradesChan, streamingBarsChan)
 
-	<-quit
-	readerCancel()
-	writerCancel()
+			for {
+				select {
+				case t := <-streamingTradesChan:
+					tradeWriter.Write(t)
+				case b := <-streamingBarsChan:
+					barWriter.Write(b)
+				}
+			}
+		}()
+		<-quit
+		equityReader.Unsubscribe()
+	}
 }
