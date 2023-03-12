@@ -49,8 +49,8 @@ func main() {
 	snapshots := reader.NewSnapshotReader(configuration, assetRepository).Read()
 	writer.NewSnapshotWriter(configuration).Write(snapshots)
 
-	barWriter := writer.NewBarWriter()
-	tradeWriter := writer.NewTradeWriter()
+	barWriter := writer.NewBarWriter(configuration)
+	tradeWriter := writer.NewTradeWriter(configuration)
 	var streamingTradesChan = make(chan types.Trade, 100_000)
 	var streamingBarsChan = make(chan types.Bar, 20_000)
 
