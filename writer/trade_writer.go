@@ -2,7 +2,6 @@ package writer
 
 import (
 	"context"
-	"fmt"
 	"github.com/phoobynet/market-ripper/types"
 	"github.com/samber/lo"
 	"log"
@@ -56,8 +55,6 @@ func (b *TradeWriter) Write(trade types.Trade) {
 	defer b.writeLock.Unlock()
 
 	b.inputBuffer = append(b.inputBuffer, trade)
-
-	fmt.Printf("added trade, new input buffer size: %d: %p\n", len(b.inputBuffer), &b.inputBuffer)
 }
 
 func (b *TradeWriter) Close() {
