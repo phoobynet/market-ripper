@@ -2,6 +2,7 @@ package types
 
 import (
 	"github.com/alpacahq/alpaca-trade-api-go/v3/marketdata"
+	"log"
 	"time"
 )
 
@@ -22,12 +23,13 @@ type Snapshot struct {
 }
 
 func FromSnapshot(symbol string, snapshot interface{}) *Snapshot {
-	switch snapshot.(type) {
-	case *marketdata.CryptoSnapshot:
-		return FromCryptoSnapshot(symbol, snapshot.(*marketdata.CryptoSnapshot))
-	case *marketdata.Snapshot:
-		return FromEquitySnapshot(symbol, snapshot.(*marketdata.Snapshot))
+	switch s := snapshot.(type) {
+	case marketdata.CryptoSnapshot:
+		return FromCryptoSnapshot(symbol, &s)
+	case marketdata.Snapshot:
+		return FromEquitySnapshot(symbol, &s)
 	default:
+		log.Fatalf("unknown snapshot type: %T", snapshot)
 		return nil
 	}
 }

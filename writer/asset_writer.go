@@ -5,6 +5,7 @@ import (
 	"github.com/alpacahq/alpaca-trade-api-go/v3/alpaca"
 	"github.com/samber/lo"
 	"log"
+	"time"
 )
 
 type AssetWriter struct {
@@ -23,10 +24,10 @@ func (a *AssetWriter) Write(asset []alpaca.Asset) {
 		for _, asset := range assets {
 			var class string
 
-			if asset.Class == "us_equity" {
-				class = "e"
+			if asset.Class == alpaca.USEquity {
+				class = "us_equity"
 			} else {
-				class = "c"
+				class = "crypto"
 			}
 
 			err := lineSender.Table("assets").
@@ -34,6 +35,7 @@ func (a *AssetWriter) Write(asset []alpaca.Asset) {
 				StringColumn("class", class).
 				StringColumn("name", asset.Name).
 				StringColumn("exchange", asset.Exchange).
+				TimestampColumn("timestamp", time.Now().UnixMicro()).
 				AtNow(ctx)
 
 			if err != nil {

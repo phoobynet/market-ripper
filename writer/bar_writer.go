@@ -47,11 +47,7 @@ func NewBarWriter() *BarWriter {
 		}
 	}()
 
-	return &BarWriter{
-		writeTicker: writeTicker,
-		writeChan:   writeChan,
-		logTicker:   logTicker,
-	}
+	return barWriter
 }
 
 func (b *BarWriter) Write(bar types.Bar) {

@@ -1,9 +1,9 @@
-title = "Crypto"
+title = "BTC/USD"
 
 class = "crypto"
 
 symbols = [
-   "*"
+    "BTC/USD"
 ]
 
 db_host = "192.168.1.66"

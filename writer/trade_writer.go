@@ -2,6 +2,7 @@ package writer
 
 import (
 	"context"
+	"fmt"
 	"github.com/phoobynet/market-ripper/types"
 	"github.com/samber/lo"
 	"log"
@@ -47,11 +48,7 @@ func NewTradeWriter() *TradeWriter {
 		}
 	}()
 
-	return &TradeWriter{
-		writeTicker: writeTicker,
-		writeChan:   writeChan,
-		logTicker:   logTicker,
-	}
+	return tradeWriter
 }
 
 func (b *TradeWriter) Write(trade types.Trade) {
@@ -59,6 +56,8 @@ func (b *TradeWriter) Write(trade types.Trade) {
 	defer b.writeLock.Unlock()
 
 	b.inputBuffer = append(b.inputBuffer, trade)
+
+	fmt.Printf("added trade, new input buffer size: %d: %p\n", len(b.inputBuffer), &b.inputBuffer)
 }
 
 func (b *TradeWriter) Close() {
@@ -70,22 +69,27 @@ func (b *TradeWriter) copyBuffer() {
 	b.writeLock.Lock()
 	defer b.writeLock.Unlock()
 
+	fmt.Printf("inputBuffer size: %d:%p\n", len(b.inputBuffer), &b.inputBuffer)
 	tempBuffer := make([]types.Trade, len(b.inputBuffer))
 	copy(tempBuffer, b.inputBuffer)
+	fmt.Printf("tempBuffer size: %d\n", len(tempBuffer))
 
 	// Clear the input buffer
-	b.inputBuffer = make([]types.Trade, 0)
+	b.inputBuffer = b.inputBuffer[:0]
+	//b.inputBuffer = make([]types.Trade, 0)
 
 	// Send the buffer to the write channel
 	b.writeChan <- tempBuffer
 }
 
-func (b *TradeWriter) flush(Trades []types.Trade) {
+func (b *TradeWriter) flush(trades []types.Trade) {
+	b.writtenCountLock.Lock()
+	defer b.writtenCountLock.Unlock()
 	var err error
 
 	if b.tableName == "" {
-		if len(Trades) > 0 {
-			if Trades[0].Class == "c" {
+		if len(trades) > 0 {
+			if trades[0].Class == "c" {
 				b.tableName = "crypto_trades"
 			} else {
 				b.tableName = "equity_trades"
@@ -93,7 +97,7 @@ func (b *TradeWriter) flush(Trades []types.Trade) {
 		}
 	}
 
-	chunks := lo.Chunk(Trades, 1_000)
+	chunks := lo.Chunk(trades, 1_000)
 
 	var c int64
 
@@ -105,6 +109,7 @@ func (b *TradeWriter) flush(Trades []types.Trade) {
 				Symbol("ticker", trade.Symbol).
 				Float64Column("price", trade.Price).
 				Float64Column("size", trade.Size).
+				StringColumn("taker_side", trade.TakerSide).
 				TimestampColumn("trade_timestamp", trade.Timestamp.UnixMicro()).
 				AtNow(ctx)
 
@@ -122,7 +127,5 @@ func (b *TradeWriter) flush(Trades []types.Trade) {
 		}
 	}
 
-	b.writtenCountLock.Lock()
 	b.writtenCount += c
-	defer b.writtenCountLock.Unlock()
 }

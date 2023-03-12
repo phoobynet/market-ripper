@@ -10,8 +10,8 @@ import (
 
 var lineSender *questdb.LineSender
 
-func StartLineSender(ctx context.Context, configuration *config.Config) {
-	sender, err := questdb.NewLineSender(ctx, questdb.WithAddress(fmt.Sprintf("%s:%s", configuration.DBHost, configuration.DBILPPort)))
+func StartLineSender(configuration *config.Config) {
+	sender, err := questdb.NewLineSender(context.TODO(), questdb.WithAddress(fmt.Sprintf("%s:%s", configuration.DBHost, configuration.DBILPPort)))
 
 	if err != nil {
 		log.Fatalf("Error initializing lineSender: %v", err)

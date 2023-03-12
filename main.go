@@ -27,6 +27,10 @@ func main() {
 	configuration := config.Load(configurationFile)
 	log.Printf("%s", configuration)
 
+	query.Connect(configuration)
+	reader.StartClients()
+	writer.StartLineSender(configuration)
+
 	// ASSET loading...
 	assetRepository := query.NewAssetRepository()
 
@@ -45,7 +49,6 @@ func main() {
 	snapshots := reader.NewSnapshotReader(configuration, assetRepository).Read()
 	writer.NewSnapshotWriter(configuration).Write(snapshots)
 
-	reader.StartClients()
 	barWriter := writer.NewBarWriter()
 	tradeWriter := writer.NewTradeWriter()
 	var streamingTradesChan = make(chan types.Trade, 100_000)
@@ -84,4 +87,7 @@ func main() {
 		<-quit
 		equityReader.Unsubscribe()
 	}
+
+	query.Disconnect()
+	writer.CloseLineSender()
 }

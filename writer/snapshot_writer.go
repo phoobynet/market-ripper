@@ -32,6 +32,10 @@ func (s *SnapshotWriter) Write(snapshots map[string]*types.Snapshot) {
 	count := 0
 
 	for symbol, snapshot := range snapshots {
+		if snapshot == nil {
+			continue
+		}
+
 		err := lineSender.Table(tableName).Symbol("ticker", symbol).
 			Float64Column("daily_bar_o", snapshot.DailyOpen).
 			Float64Column("daily_bar_h", snapshot.DailyHigh).

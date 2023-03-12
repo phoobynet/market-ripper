@@ -38,7 +38,7 @@ func NewSnapshotRepository(configuration *config.Config) *SnapshotRepository {
 				prev_daily_bar_l float,
 				prev_daily_bar_c float,
 				prev_daily_bar_v float,
-				prev_daily_bar_t long
+				prev_daily_bar_t long,
 				timestamp timestamp
 			)`,
 			tableName),

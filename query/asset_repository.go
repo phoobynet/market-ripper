@@ -18,7 +18,8 @@ func NewAssetRepository() *AssetRepository {
 				ticker symbol,
 				name string,
 				exchange string,
-				updated timestamp
+				class string,
+				timestamp timestamp
 			)`,
 	)
 
@@ -41,14 +42,14 @@ func (t *AssetRepository) Count() int {
 }
 
 func (t *AssetRepository) LastUpdated() time.Time {
-	var lastUpdated int64
-	err := connection.QueryRow(context.TODO(), "SELECT MAX(updated) FROM assets").Scan(&lastUpdated)
+	var lastUpdated time.Time
+	err := connection.QueryRow(context.TODO(), "SELECT MAX(timestamp) FROM assets").Scan(&lastUpdated)
 
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	return time.UnixMicro(lastUpdated)
+	return lastUpdated
 }
 
 func (t *AssetRepository) IsStale(maxAge time.Duration) bool {
