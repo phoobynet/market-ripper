@@ -2,9 +2,11 @@ package writer
 
 import (
 	"context"
+	"fmt"
 	"github.com/alpacahq/alpaca-trade-api-go/v3/alpaca"
 	"github.com/phoobynet/market-ripper/config"
 	"github.com/phoobynet/market-ripper/types"
+	"github.com/questdb/go-questdb-client"
 	"github.com/samber/lo"
 	"log"
 	"sync"
@@ -20,9 +22,15 @@ type TradeWriter struct {
 	writtenCountLock sync.RWMutex
 	logTicker        *time.Ticker
 	tableName        string
+	lineSender       *questdb.LineSender
 }
 
 func NewTradeWriter(configuration *config.Config) *TradeWriter {
+	sender, err := questdb.NewLineSender(context.TODO(), questdb.WithAddress(fmt.Sprintf("%s:%s", configuration.DBHost, configuration.DBILPPort)))
+
+	if err != nil {
+		log.Fatalf("Error initializing lineSender: %v", err)
+	}
 	writeTicker := time.NewTicker(time.Second)
 	writeChan := make(chan []types.Trade, 10_000)
 
@@ -41,6 +49,7 @@ func NewTradeWriter(configuration *config.Config) *TradeWriter {
 		writeChan:   writeChan,
 		logTicker:   logTicker,
 		tableName:   tableName,
+		lineSender:  sender,
 	}
 
 	go func() {
@@ -71,6 +80,7 @@ func (b *TradeWriter) Write(trade types.Trade) {
 func (b *TradeWriter) Close() {
 	b.writeTicker.Stop()
 	b.logTicker.Stop()
+	b.lineSender.Close()
 }
 
 func (b *TradeWriter) copyBuffer() {
@@ -98,7 +108,7 @@ func (b *TradeWriter) flush(trades []types.Trade) {
 
 	for _, chunkOfTrades := range chunks {
 		for _, trade := range chunkOfTrades {
-			err = lineSender.Table(b.tableName).
+			err = b.lineSender.Table(b.tableName).
 				Symbol("ticker", trade.Symbol).
 				Float64Column("price", trade.Price).
 				Float64Column("size", trade.Size).
@@ -113,7 +123,7 @@ func (b *TradeWriter) flush(trades []types.Trade) {
 			c++
 		}
 
-		err = lineSender.Flush(ctx)
+		err = b.lineSender.Flush(ctx)
 
 		if err != nil {
 			log.Fatal(err)

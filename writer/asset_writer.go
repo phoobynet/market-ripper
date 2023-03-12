@@ -2,17 +2,29 @@ package writer
 
 import (
 	"context"
+	"fmt"
 	"github.com/alpacahq/alpaca-trade-api-go/v3/alpaca"
+	"github.com/phoobynet/market-ripper/config"
+	"github.com/questdb/go-questdb-client"
 	"github.com/samber/lo"
 	"log"
 	"time"
 )
 
 type AssetWriter struct {
+	lineSender *questdb.LineSender
 }
 
-func NewAssetWriter() *AssetWriter {
-	return &AssetWriter{}
+func NewAssetWriter(configuration *config.Config) *AssetWriter {
+	sender, err := questdb.NewLineSender(context.TODO(), questdb.WithAddress(fmt.Sprintf("%s:%s", configuration.DBHost, configuration.DBILPPort)))
+
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	return &AssetWriter{
+		lineSender: sender,
+	}
 }
 
 func (a *AssetWriter) Write(asset []alpaca.Asset) {
@@ -30,7 +42,7 @@ func (a *AssetWriter) Write(asset []alpaca.Asset) {
 				class = "crypto"
 			}
 
-			err := lineSender.Table("assets").
+			err := a.lineSender.Table("assets").
 				Symbol("ticker", asset.Symbol).
 				StringColumn("class", class).
 				StringColumn("name", asset.Name).
@@ -43,10 +55,14 @@ func (a *AssetWriter) Write(asset []alpaca.Asset) {
 			}
 		}
 
-		err := lineSender.Flush(ctx)
+		err := a.lineSender.Flush(ctx)
 
 		if err != nil {
 			log.Fatal(err)
 		}
 	}
+}
+
+func (a *AssetWriter) Close() {
+	a.lineSender.Close()
 }
