@@ -31,9 +31,9 @@ func NewTradeWriter(configuration *config.Config) *TradeWriter {
 	var tableName string
 
 	if configuration.Class == alpaca.Crypto {
-		tableName = "crypto_bars"
+		tableName = "crypto_trades"
 	} else {
-		tableName = "equity_bars"
+		tableName = "equity_trades"
 	}
 
 	tradeWriter := &TradeWriter{
