@@ -2,6 +2,8 @@ package writer
 
 import (
 	"context"
+	"github.com/alpacahq/alpaca-trade-api-go/v3/alpaca"
+	"github.com/phoobynet/market-ripper/config"
 	"github.com/phoobynet/market-ripper/types"
 	"github.com/samber/lo"
 	"log"
@@ -20,16 +22,25 @@ type TradeWriter struct {
 	tableName        string
 }
 
-func NewTradeWriter() *TradeWriter {
+func NewTradeWriter(configuration *config.Config) *TradeWriter {
 	writeTicker := time.NewTicker(time.Second)
 	writeChan := make(chan []types.Trade, 10_000)
 
 	logTicker := time.NewTicker(time.Second * 5)
 
+	var tableName string
+
+	if configuration.Class == alpaca.Crypto {
+		tableName = "crypto_bars"
+	} else {
+		tableName = "equity_bars"
+	}
+
 	tradeWriter := &TradeWriter{
 		writeTicker: writeTicker,
 		writeChan:   writeChan,
 		logTicker:   logTicker,
+		tableName:   tableName,
 	}
 
 	go func() {
@@ -78,16 +89,6 @@ func (b *TradeWriter) flush(trades []types.Trade) {
 	b.writtenCountLock.Lock()
 	defer b.writtenCountLock.Unlock()
 	var err error
-
-	if b.tableName == "" {
-		if len(trades) > 0 {
-			if trades[0].Class == "c" {
-				b.tableName = "crypto_trades"
-			} else {
-				b.tableName = "equity_trades"
-			}
-		}
-	}
 
 	chunks := lo.Chunk(trades, 1_000)
 
