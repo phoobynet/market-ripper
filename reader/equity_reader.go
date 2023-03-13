@@ -17,18 +17,27 @@ func NewEquityTradeReader(configuration *config.Config) *EquityTradeReader {
 	}
 }
 
-func (t *EquityTradeReader) Subscribe(streamingTradesChan chan types.Trade, streamingBarsChan chan types.Bar) {
-	err := stocksClient.SubscribeToTrades(func(t stream.Trade) {
-		streamingTradesChan <- types.FromEquityTrade(t)
-	}, t.configuration.Symbols...)
+func (t *EquityTradeReader) Subscribe(
+	streamingTradesChan chan types.Trade,
+	streamingBarsChan chan types.Bar,
+) {
+	err := stocksClient.SubscribeToTrades(
+		func(t stream.Trade) {
+			streamingTradesChan <- types.FromEquityTrade(t)
+		},
+		t.configuration.Symbols...,
+	)
 
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	err = stocksClient.SubscribeToBars(func(b stream.Bar) {
-		streamingBarsChan <- types.FromEquityBar(b)
-	}, t.configuration.Symbols...)
+	err = stocksClient.SubscribeToBars(
+		func(b stream.Bar) {
+			streamingBarsChan <- types.FromEquityBar(b)
+		},
+		t.configuration.Symbols...,
+	)
 
 	if err != nil {
 		log.Fatal(err)

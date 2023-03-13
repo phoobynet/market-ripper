@@ -3,7 +3,6 @@ package writer
 import (
 	"context"
 	"fmt"
-	"github.com/alpacahq/alpaca-trade-api-go/v3/alpaca"
 	"github.com/phoobynet/market-ripper/config"
 	"github.com/phoobynet/market-ripper/types"
 	"github.com/questdb/go-questdb-client"
@@ -26,7 +25,7 @@ type BarWriter struct {
 }
 
 func NewBarWriter(configuration *config.Config) *BarWriter {
-	sender, err := questdb.NewLineSender(context.TODO(), questdb.WithAddress(fmt.Sprintf("%s:%s", configuration.DBHost, configuration.DBILPPort)))
+	sender, err := questdb.NewLineSender(context.TODO(), configuration.GetIngressAddress())
 
 	if err != nil {
 		log.Fatal(err)
@@ -37,19 +36,11 @@ func NewBarWriter(configuration *config.Config) *BarWriter {
 
 	logTicker := time.NewTicker(time.Second * 5)
 
-	var tableName string
-
-	if configuration.Class == alpaca.Crypto {
-		tableName = "crypto_bars"
-	} else {
-		tableName = "equity_bars"
-	}
-
 	barWriter := &BarWriter{
 		writeTicker: writeTicker,
 		writeChan:   writeChan,
 		logTicker:   logTicker,
-		tableName:   tableName,
+		tableName:   fmt.Sprintf("%s_bars", configuration.Class),
 		lineSender:  sender,
 	}
 
@@ -81,7 +72,7 @@ func (b *BarWriter) Write(bar types.Bar) {
 func (b *BarWriter) Close() {
 	b.writeTicker.Stop()
 	b.logTicker.Stop()
-	b.lineSender.Close()
+	_ = b.lineSender.Close()
 }
 
 func (b *BarWriter) copyBuffer() {

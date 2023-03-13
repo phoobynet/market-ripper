@@ -12,7 +12,8 @@ func NewAssetReader() *AssetReader {
 	return &AssetReader{}
 }
 
-func (t *AssetReader) ReadAllActive() []alpaca.Asset {
+// GetActive - Retrieves all active assets from Alpaca (us_equity and crypto)
+func (t *AssetReader) GetActive() []alpaca.Asset {
 	assets, err := alpacaClient.GetAssets(alpaca.GetAssetsRequest{Status: "active"})
 
 	if err != nil {

@@ -3,7 +3,6 @@ package writer
 import (
 	"context"
 	"fmt"
-	"github.com/alpacahq/alpaca-trade-api-go/v3/alpaca"
 	"github.com/phoobynet/market-ripper/config"
 	"github.com/phoobynet/market-ripper/types"
 	"github.com/questdb/go-questdb-client"
@@ -13,10 +12,11 @@ import (
 type SnapshotWriter struct {
 	configuration *config.Config
 	lineSender    *questdb.LineSender
+	tableName     string
 }
 
 func NewSnapshotWriter(configuration *config.Config) *SnapshotWriter {
-	sender, err := questdb.NewLineSender(context.TODO(), questdb.WithAddress(fmt.Sprintf("%s:%s", configuration.DBHost, configuration.DBILPPort)))
+	sender, err := questdb.NewLineSender(context.TODO(), configuration.GetIngressAddress())
 
 	if err != nil {
 		log.Fatal(err)
@@ -25,18 +25,11 @@ func NewSnapshotWriter(configuration *config.Config) *SnapshotWriter {
 	return &SnapshotWriter{
 		lineSender:    sender,
 		configuration: configuration,
+		tableName:     fmt.Sprintf("%s_snapshots", configuration.Class),
 	}
 }
 
 func (s *SnapshotWriter) Write(snapshots map[string]*types.Snapshot) {
-	var tableName string
-
-	if s.configuration.Class == alpaca.Crypto {
-		tableName = "crypto_snapshots"
-	} else {
-		tableName = "equity_snapshots"
-	}
-
 	ctx := context.Background()
 
 	count := 0
@@ -46,7 +39,7 @@ func (s *SnapshotWriter) Write(snapshots map[string]*types.Snapshot) {
 			continue
 		}
 
-		err := s.lineSender.Table(tableName).Symbol("ticker", symbol).
+		err := s.lineSender.Table(s.tableName).Symbol("ticker", symbol).
 			Float64Column("daily_bar_o", snapshot.DailyOpen).
 			Float64Column("daily_bar_h", snapshot.DailyHigh).
 			Float64Column("daily_bar_l", snapshot.DailyLow).
@@ -84,5 +77,5 @@ func (s *SnapshotWriter) Write(snapshots map[string]*types.Snapshot) {
 }
 
 func (s *SnapshotWriter) Close() {
-	s.lineSender.Close()
+	_ = s.lineSender.Close()
 }

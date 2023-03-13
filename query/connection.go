@@ -2,7 +2,6 @@ package query
 
 import (
 	"context"
-	"fmt"
 	"github.com/jackc/pgx/v5"
 	"github.com/phoobynet/market-ripper/config"
 	"log"
@@ -11,7 +10,13 @@ import (
 var connection *pgx.Conn
 
 func Connect(configuration *config.Config) {
-	pgConn, err := pgx.Connect(context.TODO(), fmt.Sprintf("postgresql://admin:quest@%s:%s/qdb", configuration.DBHost, configuration.DBPGPort))
+	pgConn, err := pgx.Connect(context.TODO(), configuration.GetPGAddress())
+
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	err = pgConn.Ping(context.TODO())
 
 	if err != nil {
 		log.Fatal(err)

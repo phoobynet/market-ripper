@@ -3,7 +3,6 @@ package query
 import (
 	"context"
 	"fmt"
-	"github.com/alpacahq/alpaca-trade-api-go/v3/alpaca"
 	"github.com/phoobynet/market-ripper/config"
 	"log"
 )
@@ -14,13 +13,7 @@ type SnapshotRepository struct {
 }
 
 func NewSnapshotRepository(configuration *config.Config) *SnapshotRepository {
-	var tableName string
-
-	if configuration.Class == alpaca.Crypto {
-		tableName = "crypto_snapshots"
-	} else {
-		tableName = "equity_snapshots"
-	}
+	tableName := fmt.Sprintf("%s_snapshots", configuration.Class)
 
 	_, err := connection.Exec(
 		context.TODO(),

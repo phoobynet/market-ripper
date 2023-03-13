@@ -1,5 +1,7 @@
 title = "S & P 500"
 
+class = "us_equity"
+
 symbols = ["MMM",
     "AOS",
     "ABT",

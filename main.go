@@ -2,7 +2,6 @@ package main
 
 import (
 	"flag"
-	"github.com/alpacahq/alpaca-trade-api-go/v3/alpaca"
 	"github.com/phoobynet/market-ripper/config"
 	"github.com/phoobynet/market-ripper/query"
 	"github.com/phoobynet/market-ripper/reader"
@@ -19,13 +18,27 @@ var configurationFile string
 func main() {
 	config.ValidateEnv()
 
-	flag.StringVar(&configurationFile, "config", "config.toml", "Configuration file")
+	flag.StringVar(
+		&configurationFile,
+		"config",
+		"config.toml",
+		"Configuration file",
+	)
 
-	quit := make(chan os.Signal, 1)
-	signal.Notify(quit, os.Interrupt)
+	quit := make(
+		chan os.Signal,
+		1,
+	)
+	signal.Notify(
+		quit,
+		os.Interrupt,
+	)
 
 	configuration := config.Load(configurationFile)
-	log.Printf("%s", configuration)
+	log.Printf(
+		"%s",
+		configuration,
+	)
 
 	query.Connect(configuration)
 	defer query.Disconnect()
@@ -37,7 +50,7 @@ func main() {
 
 	if assetRepository.Count() == 0 || assetRepository.IsStale(-24*time.Hour) {
 		assetReader := reader.NewAssetReader()
-		assets := assetReader.ReadAllActive()
+		assets := assetReader.GetActive()
 
 		assetWriter := writer.NewAssetWriter(configuration)
 		defer assetWriter.Close()
@@ -48,51 +61,60 @@ func main() {
 	snapshotsRepository := query.NewSnapshotRepository(configuration)
 	snapshotsRepository.Truncate()
 
-	snapshots := reader.NewSnapshotReader(configuration, assetRepository).Read()
+	snapshotReader := reader.NewSnapshotReader(
+		configuration,
+		assetRepository,
+	)
+	snapshots := snapshotReader.Read()
 	snapshotWriter := writer.NewSnapshotWriter(configuration)
 	defer snapshotWriter.Close()
 	snapshotWriter.Write(snapshots)
 
+	// TRADES and BARS readers...
 	barWriter := writer.NewBarWriter(configuration)
 	defer barWriter.Close()
 
 	tradeWriter := writer.NewTradeWriter(configuration)
 	defer tradeWriter.Close()
 
-	var streamingTradesChan = make(chan types.Trade, 100_000)
-	var streamingBarsChan = make(chan types.Bar, 20_000)
+	// Channels and tickers...
+	var snapshotRefreshTimer = time.NewTicker(10 * time.Minute)
+	defer snapshotRefreshTimer.Stop()
 
-	if configuration.Class == alpaca.Crypto {
-		cryptoReader := reader.NewCryptoReader(configuration)
-		defer cryptoReader.Unsubscribe()
-		go func() {
-			cryptoReader.Subscribe(streamingTradesChan, streamingBarsChan)
+	var streamingTradesChan = make(
+		chan types.Trade,
+		100_000,
+	)
 
-			for {
-				select {
-				case t := <-streamingTradesChan:
-					tradeWriter.Write(t)
-				case b := <-streamingBarsChan:
-					barWriter.Write(b)
-				}
+	var streamingBarsChan = make(
+		chan types.Bar,
+		20_000,
+	)
+
+	// Class reader
+	classReader := reader.CreateClassReader(configuration)
+	defer classReader.Unsubscribe()
+	go func() {
+		classReader.Subscribe(
+			streamingTradesChan,
+			streamingBarsChan,
+		)
+
+		for {
+			select {
+			case t := <-streamingTradesChan:
+				tradeWriter.Write(t)
+			case b := <-streamingBarsChan:
+				barWriter.Write(b)
+			case <-snapshotRefreshTimer.C:
+				go func() {
+					log.Println("Refreshing snapshots...")
+					snapshotsRepository.Truncate()
+					snapshots = snapshotReader.Read()
+					snapshotWriter.Write(snapshots)
+				}()
 			}
-		}()
-		<-quit
-	} else if configuration.Class == alpaca.USEquity {
-		equityReader := reader.NewEquityTradeReader(configuration)
-		equityReader.Unsubscribe()
-		go func() {
-			equityReader.Subscribe(streamingTradesChan, streamingBarsChan)
-
-			for {
-				select {
-				case t := <-streamingTradesChan:
-					tradeWriter.Write(t)
-				case b := <-streamingBarsChan:
-					barWriter.Write(b)
-				}
-			}
-		}()
-		<-quit
-	}
+		}
+	}()
+	<-quit
 }

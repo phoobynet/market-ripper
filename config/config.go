@@ -7,6 +7,7 @@ import (
 	"github.com/pelletier/go-toml/v2"
 	"github.com/phoobynet/market-ripper/file"
 	"github.com/phoobynet/market-ripper/utils"
+	"github.com/questdb/go-questdb-client"
 	"log"
 	"os"
 )
@@ -48,6 +49,14 @@ func Load(configPath string) *Config {
 
 func (c *Config) String() string {
 	return fmt.Sprintf("title: %s, class: %s, symbols: %d, db_host: %s, db_ilp_port: %s, db_pg_port: %s", c.Title, c.Class, len(c.Symbols), c.DBHost, c.DBILPPort, c.DBPGPort)
+}
+
+func (c *Config) GetIngressAddress() questdb.LineSenderOption {
+	return questdb.WithAddress(fmt.Sprintf("%s:%s", c.DBHost, c.DBILPPort))
+}
+
+func (c *Config) GetPGAddress() string {
+	return fmt.Sprintf("postgresql://admin:quest@%s:%s/qdb", c.DBHost, c.DBPGPort)
 }
 
 // clean removes any invalid characters from the ticker symbols, trims whitespace and converts to uppercase.

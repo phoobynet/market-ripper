@@ -3,7 +3,6 @@ package writer
 import (
 	"context"
 	"fmt"
-	"github.com/alpacahq/alpaca-trade-api-go/v3/alpaca"
 	"github.com/phoobynet/market-ripper/config"
 	"github.com/phoobynet/market-ripper/types"
 	"github.com/questdb/go-questdb-client"
@@ -26,29 +25,22 @@ type TradeWriter struct {
 }
 
 func NewTradeWriter(configuration *config.Config) *TradeWriter {
-	sender, err := questdb.NewLineSender(context.TODO(), questdb.WithAddress(fmt.Sprintf("%s:%s", configuration.DBHost, configuration.DBILPPort)))
+	sender, err := questdb.NewLineSender(context.TODO(), configuration.GetIngressAddress())
 
 	if err != nil {
 		log.Fatalf("Error initializing lineSender: %v", err)
 	}
+
 	writeTicker := time.NewTicker(time.Second)
 	writeChan := make(chan []types.Trade, 10_000)
 
 	logTicker := time.NewTicker(time.Second * 5)
 
-	var tableName string
-
-	if configuration.Class == alpaca.Crypto {
-		tableName = "crypto_trades"
-	} else {
-		tableName = "equity_trades"
-	}
-
 	tradeWriter := &TradeWriter{
 		writeTicker: writeTicker,
 		writeChan:   writeChan,
 		logTicker:   logTicker,
-		tableName:   tableName,
+		tableName:   fmt.Sprintf("%s_trades", configuration.Class),
 		lineSender:  sender,
 	}
 
@@ -80,7 +72,7 @@ func (b *TradeWriter) Write(trade types.Trade) {
 func (b *TradeWriter) Close() {
 	b.writeTicker.Stop()
 	b.logTicker.Stop()
-	b.lineSender.Close()
+	_ = b.lineSender.Close()
 }
 
 func (b *TradeWriter) copyBuffer() {
