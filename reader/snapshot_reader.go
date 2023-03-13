@@ -15,7 +15,10 @@ type SnapshotReader struct {
 	assetRepository *query.AssetRepository
 }
 
-func NewSnapshotReader(configuration *config.Config, assetRepository *query.AssetRepository) *SnapshotReader {
+func NewSnapshotReader(
+	configuration *config.Config,
+	assetRepository *query.AssetRepository,
+) *SnapshotReader {
 	return &SnapshotReader{
 		configuration:   configuration,
 		assetRepository: assetRepository,
@@ -31,35 +34,54 @@ func (t *SnapshotReader) Read() map[string]*types.Snapshot {
 		actualSymbols = t.configuration.Symbols
 	}
 
-	symbolChunks := lo.Chunk(actualSymbols, 500)
+	symbolChunks := lo.Chunk(
+		actualSymbols,
+		500,
+	)
 
 	// TODO: This code sucks! Refactor it!
 	mostRecentSnapshots := make(map[string]*types.Snapshot)
 
 	for i, symbols := range symbolChunks {
-		log.Printf("Loading snapshots...from Alpaca...chunk #%d of %d", i+1, len(symbolChunks))
+		log.Printf(
+			"Loading snapshots...from Alpaca...chunk #%d of %d",
+			i+1,
+			len(symbolChunks),
+		)
 
 		if t.configuration.Class == alpaca.Crypto {
-			snapshotsChunk, err := marketDataClient.GetCryptoSnapshots(symbols, marketdata.GetCryptoSnapshotRequest{})
+			snapshotsChunk, err := marketDataClient.GetCryptoSnapshots(
+				symbols,
+				marketdata.GetCryptoSnapshotRequest{},
+			)
 
 			if err != nil {
 				log.Fatal(err)
 			}
 
 			for symbol, snapshot := range snapshotsChunk {
-				mostRecentSnapshots[symbol] = types.FromSnapshot(symbol, snapshot)
+				mostRecentSnapshots[symbol] = types.FromSnapshot(
+					symbol,
+					snapshot,
+				)
 			}
 		} else {
-			snapshotsChunk, err := marketDataClient.GetSnapshots(symbols, marketdata.GetSnapshotRequest{
-				Feed: "sip",
-			})
+			snapshotsChunk, err := marketDataClient.GetSnapshots(
+				symbols,
+				marketdata.GetSnapshotRequest{
+					Feed: "sip",
+				},
+			)
 
 			if err != nil {
 				log.Fatal(err)
 			}
 
 			for symbol, snapshot := range snapshotsChunk {
-				mostRecentSnapshots[symbol] = types.FromSnapshot(symbol, snapshot)
+				mostRecentSnapshots[symbol] = types.FromSnapshot(
+					symbol,
+					snapshot,
+				)
 			}
 		}
 

@@ -13,10 +13,10 @@ import (
 	"time"
 )
 
-var configurationFile string
-
 func main() {
 	config.ValidateEnv()
+
+	var configurationFile string
 
 	flag.StringVar(
 		&configurationFile,
@@ -35,6 +35,7 @@ func main() {
 	)
 
 	configuration := config.Load(configurationFile)
+
 	log.Printf(
 		"%s",
 		configuration,
@@ -45,7 +46,6 @@ func main() {
 
 	reader.StartClients()
 
-	// ASSET loading...
 	assetRepository := query.NewAssetRepository()
 
 	if assetRepository.Count() == 0 || assetRepository.IsStale(-24*time.Hour) {
@@ -57,7 +57,6 @@ func main() {
 		assetWriter.Write(assets)
 	}
 
-	// SNAPSHOTS loading...
 	snapshotsRepository := query.NewSnapshotRepository(configuration)
 	snapshotsRepository.Truncate()
 
@@ -70,15 +69,21 @@ func main() {
 	defer snapshotWriter.Close()
 	snapshotWriter.Write(snapshots)
 
-	// TRADES and BARS readers...
 	barWriter := writer.NewBarWriter(configuration)
 	defer barWriter.Close()
 
 	tradeWriter := writer.NewTradeWriter(configuration)
 	defer tradeWriter.Close()
 
-	// Channels and tickers...
-	var snapshotRefreshTimer = time.NewTicker(10 * time.Minute)
+	var snapshotRefreshTimer *time.Ticker
+
+	if configuration.SnapshotRefreshIntervalMins > 0 {
+		interval := time.Duration(configuration.SnapshotRefreshIntervalMins)
+		snapshotRefreshTimer = time.NewTicker(interval * time.Minute)
+	} else {
+		snapshotRefreshTimer = time.NewTicker(24 * time.Hour)
+	}
+
 	defer snapshotRefreshTimer.Stop()
 
 	var streamingTradesChan = make(
@@ -108,10 +113,9 @@ func main() {
 				barWriter.Write(b)
 			case <-snapshotRefreshTimer.C:
 				go func() {
-					log.Println("Refreshing snapshots...")
-					snapshotsRepository.Truncate()
+					log.Println("Updating snapshots...")
 					snapshots = snapshotReader.Read()
-					snapshotWriter.Write(snapshots)
+					snapshotsRepository.Update(snapshots)
 				}()
 			}
 		}

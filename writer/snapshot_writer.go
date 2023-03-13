@@ -7,6 +7,7 @@ import (
 	"github.com/phoobynet/market-ripper/types"
 	"github.com/questdb/go-questdb-client"
 	"log"
+	"time"
 )
 
 type SnapshotWriter struct {
@@ -16,7 +17,10 @@ type SnapshotWriter struct {
 }
 
 func NewSnapshotWriter(configuration *config.Config) *SnapshotWriter {
-	sender, err := questdb.NewLineSender(context.TODO(), configuration.GetIngressAddress())
+	sender, err := questdb.NewLineSender(
+		context.TODO(),
+		configuration.GetIngressAddress(),
+	)
 
 	if err != nil {
 		log.Fatal(err)
@@ -25,7 +29,10 @@ func NewSnapshotWriter(configuration *config.Config) *SnapshotWriter {
 	return &SnapshotWriter{
 		lineSender:    sender,
 		configuration: configuration,
-		tableName:     fmt.Sprintf("%s_snapshots", configuration.Class),
+		tableName: fmt.Sprintf(
+			"%s_snapshots",
+			configuration.Class,
+		),
 	}
 }
 
@@ -39,19 +46,62 @@ func (s *SnapshotWriter) Write(snapshots map[string]*types.Snapshot) {
 			continue
 		}
 
-		err := s.lineSender.Table(s.tableName).Symbol("ticker", symbol).
-			Float64Column("daily_bar_o", snapshot.DailyOpen).
-			Float64Column("daily_bar_h", snapshot.DailyHigh).
-			Float64Column("daily_bar_l", snapshot.DailyLow).
-			Float64Column("daily_bar_c", snapshot.DailyClose).
-			Float64Column("daily_bar_v", snapshot.DailyVolume).
-			Int64Column("daily_bar_t", snapshot.DailyTimestamp.UnixMicro()).
-			Float64Column("prev_daily_bar_o", snapshot.PreviousOpen).
-			Float64Column("prev_daily_bar_h", snapshot.PreviousHigh).
-			Float64Column("prev_daily_bar_l", snapshot.PreviousLow).
-			Float64Column("prev_daily_bar_c", snapshot.PreviousClose).
-			Float64Column("prev_daily_bar_v", snapshot.PreviousVolume).
-			Int64Column("prev_daily_bar_t", snapshot.PreviousTimestamp.UnixMicro()).
+		err := s.lineSender.Table(s.tableName).Symbol(
+			"ticker",
+			symbol,
+		).
+			Float64Column(
+				"daily_bar_o",
+				snapshot.DailyOpen,
+			).
+			Float64Column(
+				"daily_bar_h",
+				snapshot.DailyHigh,
+			).
+			Float64Column(
+				"daily_bar_l",
+				snapshot.DailyLow,
+			).
+			Float64Column(
+				"daily_bar_c",
+				snapshot.DailyClose,
+			).
+			Float64Column(
+				"daily_bar_v",
+				snapshot.DailyVolume,
+			).
+			Int64Column(
+				"daily_bar_t",
+				snapshot.DailyTimestamp.UnixMicro(),
+			).
+			Float64Column(
+				"prev_daily_bar_o",
+				snapshot.PreviousOpen,
+			).
+			Float64Column(
+				"prev_daily_bar_h",
+				snapshot.PreviousHigh,
+			).
+			Float64Column(
+				"prev_daily_bar_l",
+				snapshot.PreviousLow,
+			).
+			Float64Column(
+				"prev_daily_bar_c",
+				snapshot.PreviousClose,
+			).
+			Float64Column(
+				"prev_daily_bar_v",
+				snapshot.PreviousVolume,
+			).
+			Int64Column(
+				"prev_daily_bar_t",
+				snapshot.PreviousTimestamp.UnixMicro(),
+			).
+			TimestampColumn(
+				"timestamp",
+				time.Now().UnixMicro(),
+			).
 			AtNow(ctx)
 
 		if err != nil {

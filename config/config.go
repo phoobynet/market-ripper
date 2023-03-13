@@ -13,12 +13,13 @@ import (
 )
 
 type Config struct {
-	Title     string
-	Symbols   []string
-	Class     alpaca.AssetClass
-	DBHost    string `toml:"db_host"`
-	DBILPPort string `toml:"db_ilp_port"`
-	DBPGPort  string `toml:"db_pg_port"`
+	Title                       string
+	Symbols                     []string
+	Class                       alpaca.AssetClass
+	DBHost                      string `toml:"db_host"`
+	DBILPPort                   string `toml:"db_ilp_port"`
+	DBPGPort                    string `toml:"db_pg_port"`
+	SnapshotRefreshIntervalMins int    `toml:"snapshot_refresh_interval_mins"`
 }
 
 func Load(configPath string) *Config {
@@ -32,7 +33,10 @@ func Load(configPath string) *Config {
 		log.Fatal(err)
 	}
 
-	err = toml.Unmarshal(data, &config)
+	err = toml.Unmarshal(
+		data,
+		&config,
+	)
 
 	if err != nil {
 		log.Fatal(err)
@@ -48,15 +52,34 @@ func Load(configPath string) *Config {
 }
 
 func (c *Config) String() string {
-	return fmt.Sprintf("title: %s, class: %s, symbols: %d, db_host: %s, db_ilp_port: %s, db_pg_port: %s", c.Title, c.Class, len(c.Symbols), c.DBHost, c.DBILPPort, c.DBPGPort)
+	return fmt.Sprintf(
+		"title: %s, class: %s, symbols: %d, db_host: %s, db_ilp_port: %s, db_pg_port: %s, snapshot_refresh_interval_mins: %d",
+		c.Title,
+		c.Class,
+		len(c.Symbols),
+		c.DBHost,
+		c.DBILPPort,
+		c.DBPGPort,
+		c.SnapshotRefreshIntervalMins,
+	)
 }
 
 func (c *Config) GetIngressAddress() questdb.LineSenderOption {
-	return questdb.WithAddress(fmt.Sprintf("%s:%s", c.DBHost, c.DBILPPort))
+	return questdb.WithAddress(
+		fmt.Sprintf(
+			"%s:%s",
+			c.DBHost,
+			c.DBILPPort,
+		),
+	)
 }
 
 func (c *Config) GetPGAddress() string {
-	return fmt.Sprintf("postgresql://admin:quest@%s:%s/qdb", c.DBHost, c.DBPGPort)
+	return fmt.Sprintf(
+		"postgresql://admin:quest@%s:%s/qdb",
+		c.DBHost,
+		c.DBPGPort,
+	)
 }
 
 // clean removes any invalid characters from the ticker symbols, trims whitespace and converts to uppercase.
@@ -67,7 +90,10 @@ func (c *Config) clean() {
 	for _, symbol := range c.Symbols {
 		cleanedSymbol = utils.CleanTicker(symbol)
 		if cleanedSymbol != "" {
-			cleanedSymbols = append(cleanedSymbols, cleanedSymbol)
+			cleanedSymbols = append(
+				cleanedSymbols,
+				cleanedSymbol,
+			)
 		}
 	}
 

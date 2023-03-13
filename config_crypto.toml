@@ -1,11 +1,13 @@
-title = "BTC/USD"
+title = "Crypto"
 
 class = "crypto"
 
 symbols = [
-    "BTC/USD"
+    "*"
 ]
 
 db_host = "192.168.1.66"
 db_ilp_port = "9009"
 db_pg_port = "8812"
+
+snapshot_refresh_interval_mins = 5

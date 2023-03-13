@@ -57,6 +57,9 @@ db_ilp_port = "9009"
 
 # Port of queries on some DDL execution using a Postgres adapter
 db_pg_port = "8812"
+
+# Setting to 0 will cause the snapshots to update every 24 hours;
+snapshot_refresh_interval_mins = 5
 ```
 
 Assuming you have a QuestDB server up and running, start `market-ripper`
@@ -69,4 +72,8 @@ market-ripper --config config.toml
 
 - `assets` - A list of assets.  If assets are older than 24 hours, the table is refreshed.
 - `crypto_snapshots` - Snapshots are created on start up and refreshed every hour
-
+- `us_equity_snapshots` - Snapshots are created on start up and refreshed every hour
+- `crypto_trades` - Crypto trades
+- `us_equity_trades` - Equity trades
+- `crypto_bars` - Crypto bars
+- `us_equity_bars` - Equity bars

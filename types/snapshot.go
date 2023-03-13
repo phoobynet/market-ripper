@@ -22,19 +22,39 @@ type Snapshot struct {
 	DailyTimestamp    time.Time `json:"dt"`
 }
 
-func FromSnapshot(symbol string, snapshot interface{}) *Snapshot {
+func FromSnapshot(
+	symbol string,
+	snapshot interface{},
+) *Snapshot {
 	switch s := snapshot.(type) {
 	case marketdata.CryptoSnapshot:
-		return FromCryptoSnapshot(symbol, &s)
+		return FromCryptoSnapshot(
+			symbol,
+			&s,
+		)
 	case marketdata.Snapshot:
-		return FromEquitySnapshot(symbol, &s)
+		return FromEquitySnapshot(
+			symbol,
+			&s,
+		)
+	case *marketdata.Snapshot:
+		return FromEquitySnapshot(
+			symbol,
+			s,
+		)
 	default:
-		log.Fatalf("unknown snapshot type: %T", snapshot)
+		log.Fatalf(
+			"unknown snapshot type: %T",
+			snapshot,
+		)
 		return nil
 	}
 }
 
-func FromCryptoSnapshot(symbol string, snapshot *marketdata.CryptoSnapshot) *Snapshot {
+func FromCryptoSnapshot(
+	symbol string,
+	snapshot *marketdata.CryptoSnapshot,
+) *Snapshot {
 	if symbol == "" {
 		return nil
 	}
@@ -72,7 +92,10 @@ func FromCryptoSnapshot(symbol string, snapshot *marketdata.CryptoSnapshot) *Sna
 	}
 }
 
-func FromEquitySnapshot(symbol string, snapshot *marketdata.Snapshot) *Snapshot {
+func FromEquitySnapshot(
+	symbol string,
+	snapshot *marketdata.Snapshot,
+) *Snapshot {
 	if symbol == "" {
 		return nil
 	}
