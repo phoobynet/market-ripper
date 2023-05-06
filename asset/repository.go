@@ -1,18 +1,19 @@
-package query
+package asset
 
 import (
-	"context"
+	"database/sql"
 	"fmt"
 	"github.com/alpacahq/alpaca-trade-api-go/v3/alpaca"
 	"log"
 	"time"
 )
 
-type AssetRepository struct{}
+type Repository struct {
+	connection *sql.DB
+}
 
-func NewAssetRepository() *AssetRepository {
+func NewRepository(connection *sql.DB) (*Repository, error) {
 	_, err := connection.Exec(
-		context.TODO(),
 		`
 			CREATE TABLE IF NOT EXISTS assets(
 				ticker symbol,
@@ -24,15 +25,17 @@ func NewAssetRepository() *AssetRepository {
 	)
 
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 
-	return &AssetRepository{}
+	return &Repository{
+		connection: connection,
+	}, nil
 }
 
-func (t *AssetRepository) Count() int {
+func (r *Repository) Count() int {
 	var count int
-	err := connection.QueryRow(context.TODO(), "SELECT COUNT(*) FROM assets").Scan(&count)
+	err := r.connection.QueryRow("SELECT COUNT(*) FROM assets").Scan(&count)
 
 	if err != nil {
 		log.Fatal(err)
@@ -41,9 +44,9 @@ func (t *AssetRepository) Count() int {
 	return count
 }
 
-func (t *AssetRepository) LastUpdated() time.Time {
+func (r *Repository) LastUpdated() time.Time {
 	var lastUpdated time.Time
-	err := connection.QueryRow(context.TODO(), "SELECT MAX(timestamp) FROM assets").Scan(&lastUpdated)
+	err := r.connection.QueryRow("SELECT MAX(timestamp) FROM assets").Scan(&lastUpdated)
 
 	if err != nil {
 		log.Fatal(err)
@@ -52,8 +55,8 @@ func (t *AssetRepository) LastUpdated() time.Time {
 	return lastUpdated
 }
 
-func (t *AssetRepository) IsStale(maxAge time.Duration) bool {
-	lastUpdated := t.LastUpdated()
+func (r *Repository) IsStale(maxAge time.Duration) bool {
+	lastUpdated := r.LastUpdated()
 
 	now := time.Now()
 
@@ -70,16 +73,16 @@ func (t *AssetRepository) IsStale(maxAge time.Duration) bool {
 	return false
 }
 
-func (t *AssetRepository) Truncate() {
-	_, err := connection.Exec(context.TODO(), "TRUNCATE TABLE assets")
+func (r *Repository) Truncate() {
+	_, err := r.connection.Exec("TRUNCATE TABLE assets")
 	if err != nil {
 		log.Fatal(err)
 	}
 }
 
-func (t *AssetRepository) GetSymbolByClass(class alpaca.AssetClass) []string {
+func (r *Repository) GetSymbolByClass(class alpaca.AssetClass) ([]string, error) {
 	var symbols []string
-	cursor, err := connection.Query(context.TODO(), fmt.Sprintf("select ticker from assets where class = '%s' order by ticker", class))
+	cursor, err := r.connection.Query(fmt.Sprintf("select ticker from assets where class = '%s' order by ticker", class))
 
 	if err != nil {
 		log.Fatal(err)
@@ -90,11 +93,11 @@ func (t *AssetRepository) GetSymbolByClass(class alpaca.AssetClass) []string {
 	for cursor.Next() {
 		err := cursor.Scan(&symbol)
 		if err != nil {
-			log.Fatal(err)
+			return nil, err
 		}
 
 		symbols = append(symbols, symbol)
 	}
 
-	return symbols
+	return symbols, nil
 }

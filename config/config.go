@@ -6,7 +6,7 @@ import (
 	"github.com/alpacahq/alpaca-trade-api-go/v3/alpaca"
 	"github.com/pelletier/go-toml/v2"
 	"github.com/phoobynet/market-ripper/file"
-	"github.com/phoobynet/market-ripper/utils"
+	"github.com/phoobynet/market-ripper/ticker"
 	"github.com/questdb/go-questdb-client"
 	"log"
 	"os"
@@ -22,7 +22,7 @@ type Config struct {
 	SnapshotRefreshIntervalMins int    `toml:"snapshot_refresh_interval_mins"`
 }
 
-func Load(configPath string) *Config {
+func Load(configPath string) (*Config, error) {
 	file.MustExist(configPath)
 
 	var config *Config
@@ -30,7 +30,7 @@ func Load(configPath string) *Config {
 	data, err := os.ReadFile(configPath)
 
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 
 	err = toml.Unmarshal(
@@ -45,10 +45,10 @@ func Load(configPath string) *Config {
 	config.clean()
 
 	if err := config.validate(); err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 
-	return config
+	return config, nil
 }
 
 func (c *Config) String() string {
@@ -88,7 +88,7 @@ func (c *Config) clean() {
 	var cleanedSymbol string
 
 	for _, symbol := range c.Symbols {
-		cleanedSymbol = utils.CleanTicker(symbol)
+		cleanedSymbol = ticker.Clean(symbol)
 		if cleanedSymbol != "" {
 			cleanedSymbols = append(
 				cleanedSymbols,

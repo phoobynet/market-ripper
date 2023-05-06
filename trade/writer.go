@@ -1,10 +1,9 @@
-package writer
+package trade
 
 import (
 	"context"
 	"fmt"
 	"github.com/phoobynet/market-ripper/config"
-	"github.com/phoobynet/market-ripper/types"
 	"github.com/questdb/go-questdb-client"
 	"github.com/samber/lo"
 	"log"
@@ -12,11 +11,11 @@ import (
 	"time"
 )
 
-type TradeWriter struct {
-	inputBuffer      []types.Trade
+type Writer struct {
+	inputBuffer      []Trade
 	writeTicker      *time.Ticker
 	writeLock        sync.RWMutex
-	writeChan        chan []types.Trade
+	writeChan        chan []Trade
 	writtenCount     int64
 	writtenCountLock sync.RWMutex
 	logTicker        *time.Ticker
@@ -24,7 +23,7 @@ type TradeWriter struct {
 	lineSender       *questdb.LineSender
 }
 
-func NewTradeWriter(configuration *config.Config) *TradeWriter {
+func NewWriter(configuration *config.Config) *Writer {
 	sender, err := questdb.NewLineSender(context.TODO(), configuration.GetIngressAddress())
 
 	if err != nil {
@@ -32,11 +31,11 @@ func NewTradeWriter(configuration *config.Config) *TradeWriter {
 	}
 
 	writeTicker := time.NewTicker(time.Second)
-	writeChan := make(chan []types.Trade, 10_000)
+	writeChan := make(chan []Trade, 10_000)
 
 	logTicker := time.NewTicker(time.Second * 5)
 
-	tradeWriter := &TradeWriter{
+	tradeWriter := &Writer{
 		writeTicker: writeTicker,
 		writeChan:   writeChan,
 		logTicker:   logTicker,
@@ -62,32 +61,32 @@ func NewTradeWriter(configuration *config.Config) *TradeWriter {
 	return tradeWriter
 }
 
-func (b *TradeWriter) Write(trade types.Trade) {
+func (b *Writer) Write(theTrade Trade) {
 	b.writeLock.Lock()
 	defer b.writeLock.Unlock()
 
-	b.inputBuffer = append(b.inputBuffer, trade)
+	b.inputBuffer = append(b.inputBuffer, theTrade)
 }
 
-func (b *TradeWriter) Close() {
+func (b *Writer) Close() {
 	b.writeTicker.Stop()
 	b.logTicker.Stop()
 	_ = b.lineSender.Close()
 }
 
-func (b *TradeWriter) copyBuffer() {
+func (b *Writer) copyBuffer() {
 	b.writeLock.Lock()
 	defer b.writeLock.Unlock()
 
-	tempBuffer := make([]types.Trade, len(b.inputBuffer))
+	tempBuffer := make([]Trade, len(b.inputBuffer))
 	copy(tempBuffer, b.inputBuffer)
 
-	b.inputBuffer = make([]types.Trade, 0)
+	b.inputBuffer = make([]Trade, 0)
 
 	b.writeChan <- tempBuffer
 }
 
-func (b *TradeWriter) flush(trades []types.Trade) {
+func (b *Writer) flush(trades []Trade) {
 	b.writtenCountLock.Lock()
 	defer b.writtenCountLock.Unlock()
 	var err error
@@ -99,13 +98,13 @@ func (b *TradeWriter) flush(trades []types.Trade) {
 	ctx := context.TODO()
 
 	for _, chunkOfTrades := range chunks {
-		for _, trade := range chunkOfTrades {
+		for _, theTrade := range chunkOfTrades {
 			err = b.lineSender.Table(b.tableName).
-				Symbol("ticker", trade.Symbol).
-				Float64Column("price", trade.Price).
-				Float64Column("size", trade.Size).
-				StringColumn("taker_side", trade.TakerSide).
-				TimestampColumn("trade_timestamp", trade.Timestamp.UnixMicro()).
+				Symbol("ticker", theTrade.Symbol).
+				Float64Column("price", theTrade.Price).
+				Float64Column("size", theTrade.Size).
+				StringColumn("taker_side", theTrade.TakerSide).
+				TimestampColumn("trade_timestamp", theTrade.Timestamp.UnixMicro()).
 				AtNow(ctx)
 
 			if err != nil {

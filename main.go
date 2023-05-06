@@ -1,11 +1,14 @@
 package main
 
 import (
+	"context"
 	"flag"
+	"github.com/phoobynet/market-ripper/bar"
+	"github.com/phoobynet/market-ripper/clients"
 	"github.com/phoobynet/market-ripper/config"
 	"github.com/phoobynet/market-ripper/query"
 	"github.com/phoobynet/market-ripper/reader"
-	"github.com/phoobynet/market-ripper/types"
+	"github.com/phoobynet/market-ripper/trade"
 	"github.com/phoobynet/market-ripper/writer"
 	"log"
 	"os"
@@ -44,7 +47,11 @@ func main() {
 	query.Connect(configuration)
 	defer query.Disconnect()
 
-	reader.StartClients()
+	c, err := clients.NewClients(context.TODO())
+
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	assetRepository := query.NewAssetRepository()
 
@@ -69,10 +76,10 @@ func main() {
 	defer snapshotWriter.Close()
 	snapshotWriter.Write(snapshots)
 
-	barWriter := writer.NewBarWriter(configuration)
+	barWriter := bar.NewWriter(configuration)
 	defer barWriter.Close()
 
-	tradeWriter := writer.NewTradeWriter(configuration)
+	tradeWriter := trade.NewWriter(configuration)
 	defer tradeWriter.Close()
 
 	var snapshotRefreshTimer *time.Ticker
@@ -87,12 +94,12 @@ func main() {
 	defer snapshotRefreshTimer.Stop()
 
 	var streamingTradesChan = make(
-		chan types.Trade,
+		chan trade.Trade,
 		100_000,
 	)
 
 	var streamingBarsChan = make(
-		chan types.Bar,
+		chan bar.Bar,
 		20_000,
 	)
 

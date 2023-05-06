@@ -52,7 +52,7 @@ func TestConfig_Load(t *testing.T) {
 		_ = os.Remove(testConfigFileName)
 	}()
 
-	config, err := Load(testConfigFileName)
+	config := Load(testConfigFileName)
 
 	if err != nil {
 		t.Fatal(err)
@@ -95,7 +95,7 @@ func TestConfig_Load_validate_title(t *testing.T) {
 		_ = os.Remove(testConfigFileName)
 	}()
 
-	_, err = Load(testConfigFileName)
+	_ = Load(testConfigFileName)
 
 	if err != nil && err.Error() != "title is required" {
 		t.Errorf("Expected error to be \"title is required\", got \"%s\"", err.Error())
@@ -118,7 +118,7 @@ func TestConfig_Load_validate_symbol(t *testing.T) {
 		_ = os.Remove(testConfigFileName)
 	}()
 
-	_, err = Load(testConfigFileName)
+	_ = Load(testConfigFileName)
 
 	if err != nil && err.Error() != "symbols is required" {
 		t.Errorf("Expected error to be \"symbols is required\", got \"%s\"", err.Error())
@@ -133,5 +133,5 @@ func TestLoad_MissingConfigurationFile(t *testing.T) {
 		}
 	}()
 
-	_, _ = Load("does_not_exist.toml")
+	_ = Load("does_not_exist.toml")
 }

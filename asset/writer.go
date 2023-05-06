@@ -1,4 +1,4 @@
-package writer
+package asset
 
 import (
 	"context"
@@ -10,23 +10,23 @@ import (
 	"time"
 )
 
-type AssetWriter struct {
+type Writer struct {
 	lineSender *questdb.LineSender
 }
 
-func NewAssetWriter(configuration *config.Config) *AssetWriter {
+func NewWriter(configuration *config.Config) (*Writer, error) {
 	sender, err := questdb.NewLineSender(context.TODO(), configuration.GetIngressAddress())
 
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 
-	return &AssetWriter{
+	return &Writer{
 		lineSender: sender,
-	}
+	}, nil
 }
 
-func (a *AssetWriter) Write(asset []alpaca.Asset) {
+func (a *Writer) Write(asset []alpaca.Asset) {
 	assetChunks := lo.Chunk(asset, 1_000)
 
 	ctx := context.TODO()
@@ -54,6 +54,6 @@ func (a *AssetWriter) Write(asset []alpaca.Asset) {
 	}
 }
 
-func (a *AssetWriter) Close() {
+func (a *Writer) Close() {
 	_ = a.lineSender.Close()
 }

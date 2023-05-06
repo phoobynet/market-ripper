@@ -1,102 +1,101 @@
-package writer
+package snapshot
 
 import (
 	"context"
 	"fmt"
 	"github.com/phoobynet/market-ripper/config"
-	"github.com/phoobynet/market-ripper/types"
 	"github.com/questdb/go-questdb-client"
 	"log"
 	"time"
 )
 
-type SnapshotWriter struct {
+type Writer struct {
 	configuration *config.Config
 	lineSender    *questdb.LineSender
 	tableName     string
 }
 
-func NewSnapshotWriter(configuration *config.Config) *SnapshotWriter {
+func NewWriter(configuration *config.Config) (*Writer, error) {
 	sender, err := questdb.NewLineSender(
 		context.TODO(),
 		configuration.GetIngressAddress(),
 	)
 
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 
-	return &SnapshotWriter{
+	return &Writer{
 		lineSender:    sender,
 		configuration: configuration,
 		tableName: fmt.Sprintf(
 			"%s_snapshots",
 			configuration.Class,
 		),
-	}
+	}, nil
 }
 
-func (s *SnapshotWriter) Write(snapshots map[string]*types.Snapshot) {
+func (w *Writer) Write(snapshots map[string]*Snapshot) {
 	ctx := context.Background()
 
 	count := 0
 
-	for symbol, snapshot := range snapshots {
-		if snapshot == nil {
+	for symbol, s := range snapshots {
+		if s == nil {
 			continue
 		}
 
-		err := s.lineSender.Table(s.tableName).Symbol(
+		err := w.lineSender.Table(w.tableName).Symbol(
 			"ticker",
 			symbol,
 		).
 			Float64Column(
 				"daily_bar_o",
-				snapshot.DailyOpen,
+				s.DailyOpen,
 			).
 			Float64Column(
 				"daily_bar_h",
-				snapshot.DailyHigh,
+				s.DailyHigh,
 			).
 			Float64Column(
 				"daily_bar_l",
-				snapshot.DailyLow,
+				s.DailyLow,
 			).
 			Float64Column(
 				"daily_bar_c",
-				snapshot.DailyClose,
+				s.DailyClose,
 			).
 			Float64Column(
 				"daily_bar_v",
-				snapshot.DailyVolume,
+				s.DailyVolume,
 			).
 			Int64Column(
 				"daily_bar_t",
-				snapshot.DailyTimestamp.UnixMicro(),
+				s.DailyTimestamp.UnixMicro(),
 			).
 			Float64Column(
 				"prev_daily_bar_o",
-				snapshot.PreviousOpen,
+				s.PreviousOpen,
 			).
 			Float64Column(
 				"prev_daily_bar_h",
-				snapshot.PreviousHigh,
+				s.PreviousHigh,
 			).
 			Float64Column(
 				"prev_daily_bar_l",
-				snapshot.PreviousLow,
+				s.PreviousLow,
 			).
 			Float64Column(
 				"prev_daily_bar_c",
-				snapshot.PreviousClose,
+				s.PreviousClose,
 			).
 			Float64Column(
 				"prev_daily_bar_v",
-				snapshot.PreviousVolume,
+				s.PreviousVolume,
 			).
 			Int64Column(
 				"prev_daily_bar_t",
-				snapshot.PreviousTimestamp.UnixMicro(),
+				s.PreviousTimestamp.UnixMicro(),
 			).
 			TimestampColumn(
 				"timestamp",
@@ -111,7 +110,7 @@ func (s *SnapshotWriter) Write(snapshots map[string]*types.Snapshot) {
 		count++
 
 		if count%1_000 == 0 {
-			err = s.lineSender.Flush(ctx)
+			err = w.lineSender.Flush(ctx)
 
 			if err != nil {
 				log.Fatal(err)
@@ -119,13 +118,13 @@ func (s *SnapshotWriter) Write(snapshots map[string]*types.Snapshot) {
 		}
 	}
 
-	err := s.lineSender.Flush(ctx)
+	err := w.lineSender.Flush(ctx)
 
 	if err != nil {
 		log.Fatal(err)
 	}
 }
 
-func (s *SnapshotWriter) Close() {
-	_ = s.lineSender.Close()
+func (w *Writer) Close() {
+	_ = w.lineSender.Close()
 }

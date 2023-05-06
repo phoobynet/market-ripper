@@ -1,10 +1,9 @@
-package writer
+package bar
 
 import (
 	"context"
 	"fmt"
 	"github.com/phoobynet/market-ripper/config"
-	"github.com/phoobynet/market-ripper/types"
 	"github.com/questdb/go-questdb-client"
 	"github.com/samber/lo"
 	"log"
@@ -12,11 +11,11 @@ import (
 	"time"
 )
 
-type BarWriter struct {
-	inputBuffer      []types.Bar
+type Writer struct {
+	inputBuffer      []Bar
 	writeTicker      *time.Ticker
 	writeLock        sync.RWMutex
-	writeChan        chan []types.Bar
+	writeChan        chan []Bar
 	writtenCount     int64
 	writtenCountLock sync.RWMutex
 	logTicker        *time.Ticker
@@ -24,7 +23,7 @@ type BarWriter struct {
 	lineSender       *questdb.LineSender
 }
 
-func NewBarWriter(configuration *config.Config) *BarWriter {
+func NewWriter(configuration *config.Config) *Writer {
 	sender, err := questdb.NewLineSender(context.TODO(), configuration.GetIngressAddress())
 
 	if err != nil {
@@ -32,11 +31,11 @@ func NewBarWriter(configuration *config.Config) *BarWriter {
 	}
 
 	writeTicker := time.NewTicker(5 * time.Second)
-	writeChan := make(chan []types.Bar, 10_000)
+	writeChan := make(chan []Bar, 10_000)
 
 	logTicker := time.NewTicker(time.Second * 5)
 
-	barWriter := &BarWriter{
+	barWriter := &Writer{
 		writeTicker: writeTicker,
 		writeChan:   writeChan,
 		logTicker:   logTicker,
@@ -62,34 +61,34 @@ func NewBarWriter(configuration *config.Config) *BarWriter {
 	return barWriter
 }
 
-func (b *BarWriter) Write(bar types.Bar) {
+func (b *Writer) Write(bar Bar) {
 	b.writeLock.Lock()
 	defer b.writeLock.Unlock()
 
 	b.inputBuffer = append(b.inputBuffer, bar)
 }
 
-func (b *BarWriter) Close() {
+func (b *Writer) Close() {
 	b.writeTicker.Stop()
 	b.logTicker.Stop()
 	_ = b.lineSender.Close()
 }
 
-func (b *BarWriter) copyBuffer() {
+func (b *Writer) copyBuffer() {
 	b.writeLock.Lock()
 	defer b.writeLock.Unlock()
 
-	tempBuffer := make([]types.Bar, len(b.inputBuffer))
+	tempBuffer := make([]Bar, len(b.inputBuffer))
 	copy(tempBuffer, b.inputBuffer)
 
 	// Clear the input buffer
-	b.inputBuffer = make([]types.Bar, 0)
+	b.inputBuffer = make([]Bar, 0)
 
 	// Send the buffer to the write channel
 	b.writeChan <- tempBuffer
 }
 
-func (b *BarWriter) flush(bars []types.Bar) {
+func (b *Writer) flush(bars []Bar) {
 	var err error
 
 	chunks := lo.Chunk(bars, 1_000)
@@ -99,17 +98,17 @@ func (b *BarWriter) flush(bars []types.Bar) {
 	ctx := context.TODO()
 
 	for _, chunkOfBars := range chunks {
-		for _, bar := range chunkOfBars {
+		for _, theBar := range chunkOfBars {
 			err = b.lineSender.Table(b.tableName).
-				Symbol("ticker", bar.Symbol).
-				Float64Column("o", bar.Open).
-				Float64Column("h", bar.High).
-				Float64Column("l", bar.Low).
-				Float64Column("c", bar.Close).
-				Float64Column("v", bar.Volume).
-				Float64Column("vw", bar.VWAP).
-				Float64Column("n", bar.TradeCount).
-				TimestampColumn("t", bar.Timestamp.UnixMicro()).
+				Symbol("ticker", theBar.Symbol).
+				Float64Column("o", theBar.Open).
+				Float64Column("h", theBar.High).
+				Float64Column("l", theBar.Low).
+				Float64Column("c", theBar.Close).
+				Float64Column("v", theBar.Volume).
+				Float64Column("vw", theBar.VWAP).
+				Float64Column("n", theBar.TradeCount).
+				TimestampColumn("t", theBar.Timestamp.UnixMicro()).
 				AtNow(ctx)
 
 			if err != nil {
@@ -128,5 +127,5 @@ func (b *BarWriter) flush(bars []types.Bar) {
 
 	b.writtenCountLock.Lock()
 	b.writtenCount += c
-	defer b.writtenCountLock.Unlock()
+	b.writtenCountLock.Unlock()
 }
