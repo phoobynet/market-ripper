@@ -1,10 +1,8 @@
 package main
 
 import (
-	"context"
 	"flag"
 	"github.com/phoobynet/market-ripper/bar"
-	"github.com/phoobynet/market-ripper/clients"
 	"github.com/phoobynet/market-ripper/config"
 	"github.com/phoobynet/market-ripper/query"
 	"github.com/phoobynet/market-ripper/reader"
@@ -37,7 +35,11 @@ func main() {
 		os.Interrupt,
 	)
 
-	configuration := config.Load(configurationFile)
+	configuration, err := config.Load(configurationFile)
+
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	log.Printf(
 		"%s",
@@ -46,12 +48,6 @@ func main() {
 
 	query.Connect(configuration)
 	defer query.Disconnect()
-
-	c, err := clients.NewClients(context.TODO())
-
-	if err != nil {
-		log.Fatal(err)
-	}
 
 	assetRepository := query.NewAssetRepository()
 
