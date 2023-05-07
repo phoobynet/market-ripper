@@ -21,6 +21,7 @@ import (
 	"log"
 	"os"
 	"os/signal"
+	"runtime/pprof"
 	"time"
 )
 
@@ -34,6 +35,7 @@ func main() {
 	config.ValidateEnv()
 
 	var configurationFile string
+	var cpuProfile string
 
 	flag.StringVar(
 		&configurationFile,
@@ -42,17 +44,31 @@ func main() {
 		"Configuration file",
 	)
 
+	flag.StringVar(&cpuProfile, "cpuprofile", "", "write cpu profile to file")
+
+	flag.Parse()
+
+	if cpuProfile != "" {
+		f, err := os.Create(cpuProfile)
+		fatalOnErr(err)
+
+		err = pprof.StartCPUProfile(f)
+		fatalOnErr(err)
+
+		defer pprof.StopCPUProfile()
+	}
+
 	quit := make(
 		chan os.Signal,
 		1,
 	)
+
 	signal.Notify(
 		quit,
 		os.Interrupt,
 	)
 
 	configuration, err := config.Load(configurationFile)
-
 	fatalOnErr(err)
 
 	log.Printf(
