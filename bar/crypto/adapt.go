@@ -2,13 +2,13 @@ package crypto
 
 import (
 	"github.com/alpacahq/alpaca-trade-api-go/v3/marketdata/stream"
-	"github.com/phoobynet/market-ripper/bar"
+	"github.com/phoobynet/market-ripper/bar/models"
 )
 
-type StreamBarAdapter = func(b stream.CryptoBar) bar.Bar
+type StreamBarAdapter = func(b stream.CryptoBar) models.Bar
 
-func Adapt(b stream.CryptoBar) bar.Bar {
-	return bar.Bar{
+func Adapt(b stream.CryptoBar) models.Bar {
+	return models.Bar{
 		Class:      "c",
 		Symbol:     b.Symbol,
 		Open:       b.Open,

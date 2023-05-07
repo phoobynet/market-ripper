@@ -3,6 +3,7 @@ package bar
 import (
 	"context"
 	"fmt"
+	"github.com/phoobynet/market-ripper/bar/models"
 	"github.com/phoobynet/market-ripper/config"
 	"github.com/questdb/go-questdb-client"
 	"github.com/samber/lo"
@@ -12,10 +13,10 @@ import (
 )
 
 type Writer struct {
-	inputBuffer      []Bar
+	inputBuffer      []models.Bar
 	writeTicker      *time.Ticker
 	writeLock        sync.RWMutex
-	writeChan        chan []Bar
+	writeChan        chan []models.Bar
 	writtenCount     int64
 	writtenCountLock sync.RWMutex
 	logTicker        *time.Ticker
@@ -31,7 +32,7 @@ func NewWriter(configuration *config.Config) *Writer {
 	}
 
 	writeTicker := time.NewTicker(5 * time.Second)
-	writeChan := make(chan []Bar, 10_000)
+	writeChan := make(chan []models.Bar, 10_000)
 
 	logTicker := time.NewTicker(time.Second * 5)
 
@@ -61,7 +62,7 @@ func NewWriter(configuration *config.Config) *Writer {
 	return barWriter
 }
 
-func (b *Writer) Write(bar Bar) {
+func (b *Writer) Write(bar models.Bar) {
 	b.writeLock.Lock()
 	defer b.writeLock.Unlock()
 
@@ -78,17 +79,17 @@ func (b *Writer) copyBuffer() {
 	b.writeLock.Lock()
 	defer b.writeLock.Unlock()
 
-	tempBuffer := make([]Bar, len(b.inputBuffer))
+	tempBuffer := make([]models.Bar, len(b.inputBuffer))
 	copy(tempBuffer, b.inputBuffer)
 
 	// Clear the input buffer
-	b.inputBuffer = make([]Bar, 0)
+	b.inputBuffer = make([]models.Bar, 0)
 
 	// Send the buffer to the write channel
 	b.writeChan <- tempBuffer
 }
 
-func (b *Writer) flush(bars []Bar) {
+func (b *Writer) flush(bars []models.Bar) {
 	var err error
 
 	chunks := lo.Chunk(bars, 1_000)

@@ -3,13 +3,13 @@ package crypto
 import (
 	"errors"
 	"github.com/alpacahq/alpaca-trade-api-go/v3/marketdata"
-	"github.com/phoobynet/market-ripper/snapshot"
+	"github.com/phoobynet/market-ripper/snapshot/models"
 )
 
 func Adapt(
 	symbol string,
 	cryptoSnapshot marketdata.CryptoSnapshot,
-) (*snapshot.Snapshot, error) {
+) (*models.Snapshot, error) {
 	if symbol == "" {
 		return nil, errors.New("symbol cannot be empty")
 	}
@@ -26,7 +26,7 @@ func Adapt(
 		return nil, errors.New("unexpected dailyBar was empty")
 	}
 
-	return &snapshot.Snapshot{
+	return &models.Snapshot{
 		Symbol:            symbol,
 		PreviousOpen:      previousDailyBar.Open,
 		PreviousHigh:      previousDailyBar.High,

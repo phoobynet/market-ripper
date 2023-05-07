@@ -1,12 +1,10 @@
-package snapshot
+package models
 
 import (
-	"gorm.io/gorm"
 	"time"
 )
 
 type Snapshot struct {
-	gorm.Model
 	Symbol            string
 	PreviousOpen      float64
 	PreviousHigh      float64

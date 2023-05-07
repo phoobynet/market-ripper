@@ -2,7 +2,7 @@ package equity
 
 import (
 	"github.com/alpacahq/alpaca-trade-api-go/v3/marketdata/stream"
-	"github.com/phoobynet/market-ripper/bar"
+	"github.com/phoobynet/market-ripper/bar/models"
 	"github.com/phoobynet/market-ripper/config"
 )
 
@@ -20,7 +20,7 @@ func NewReader(configuration *config.Config, client *stream.StocksClient) (*Read
 	return reader, nil
 }
 
-func (r *Reader) Subscribe(bars chan bar.Bar) error {
+func (r *Reader) Subscribe(bars chan models.Bar) error {
 	return r.client.SubscribeToBars(
 		func(equityBar stream.Bar) {
 			bars <- Adapt(equityBar)

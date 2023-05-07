@@ -10,6 +10,7 @@ import (
 	"github.com/phoobynet/market-ripper/bar"
 	barCrypto "github.com/phoobynet/market-ripper/bar/crypto"
 	barEquity "github.com/phoobynet/market-ripper/bar/equity"
+	"github.com/phoobynet/market-ripper/bar/models"
 	"github.com/phoobynet/market-ripper/config"
 	"github.com/phoobynet/market-ripper/database"
 	"github.com/phoobynet/market-ripper/snapshot"
@@ -22,6 +23,12 @@ import (
 	"os/signal"
 	"time"
 )
+
+func fatalOnErr(err error) {
+	if err != nil {
+		log.Fatal(err)
+	}
+}
 
 func main() {
 	config.ValidateEnv()
@@ -46,9 +53,7 @@ func main() {
 
 	configuration, err := config.Load(configurationFile)
 
-	if err != nil {
-		log.Fatal(err)
-	}
+	fatalOnErr(err)
 
 	log.Printf(
 		"%s",
@@ -58,34 +63,25 @@ func main() {
 	alpacaClient := alpaca.NewClient(alpaca.ClientOpts{})
 	marketDataClient := marketdata.NewClient(marketdata.ClientOpts{})
 
+	// Connect to equities streaming client
 	stocksClientContext, stocksClientCancel := context.WithCancel(context.Background())
 	defer stocksClientCancel()
 	stocksClient := stream.NewStocksClient(marketdata.SIP)
-
 	err = stocksClient.Connect(stocksClientContext)
+	fatalOnErr(err)
+	log.Println("Connected to stocks client")
 
-	if err != nil {
-		log.Fatal(err)
-	} else {
-		log.Println("Connected to stocks client")
-	}
-
+	// Connect to crypto streaming client
 	cryptoClientContext, cryptoClientCancel := context.WithCancel(context.Background())
 	defer cryptoClientCancel()
 	cryptoClient := stream.NewCryptoClient("us")
 	err = cryptoClient.Connect(cryptoClientContext)
+	fatalOnErr(err)
+	log.Println("Connected to crypto client")
 
-	if err != nil {
-		log.Fatal(err)
-	} else {
-		log.Println("Connected to crypto client")
-	}
-
+	// Connect to QuestDB database using the Postgres protocol
 	pgConnection, err := database.Connect(configuration)
-
-	if err != nil {
-		log.Fatal(err)
-	}
+	fatalOnErr(err)
 
 	defer func(pgConnection *gorm.DB) {
 		db, err := pgConnection.DB()
@@ -96,24 +92,10 @@ func main() {
 	}(pgConnection)
 
 	assetRepository, err := asset.Prepare(pgConnection, alpacaClient)
+	fatalOnErr(err)
 
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	snapshotRepository, err := snapshot.NewRepository(pgConnection)
-
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	snapshotUpdater, err := snapshot.NewUpdater(configuration, assetRepository, marketDataClient, snapshotRepository)
-
-	barWriter := bar.NewWriter(configuration)
-	defer barWriter.Close()
-
-	tradeWriter := trade.NewWriter(configuration)
-	defer tradeWriter.Close()
+	_, snapshotUpdater, err := snapshot.Prepare(configuration, pgConnection, assetRepository, marketDataClient)
+	fatalOnErr(err)
 
 	var snapshotRefreshTimer *time.Ticker
 
@@ -132,7 +114,7 @@ func main() {
 	)
 
 	var barsChannel = make(
-		chan bar.Bar,
+		chan models.Bar,
 		20_000,
 	)
 
@@ -141,51 +123,37 @@ func main() {
 
 	if configuration.Class == "us_equity" {
 		barReader, err = barEquity.NewReader(configuration, stocksClient)
-		if err != nil {
-			log.Fatal(err)
-		}
+		fatalOnErr(err)
 
 		tradeReader, err = tradeEquity.NewReader(configuration, stocksClient)
-
-		if err != nil {
-			log.Fatal(err)
-		}
+		fatalOnErr(err)
 	} else {
 		barReader, err = barCrypto.NewReader(configuration, cryptoClient)
-		if err != nil {
-			log.Fatal(err)
-		}
+		fatalOnErr(err)
 
 		tradeReader, err = tradeCrypto.NewReader(configuration, cryptoClient)
-
-		if err != nil {
-			log.Fatal(err)
-		}
+		fatalOnErr(err)
 	}
 
 	err = barReader.Subscribe(barsChannel)
-
-	if err != nil {
-		log.Fatal(err)
-	}
+	fatalOnErr(err)
 
 	err = tradeReader.Subscribe(tradesChannel)
+	fatalOnErr(err)
 
 	defer func(barReader bar.Reader) {
-		err := barReader.Unsubscribe()
-
-		if err != nil {
-			log.Fatal(err)
-		}
+		_ = barReader.Unsubscribe()
 	}(barReader)
 
 	defer func(tradeReader trade.Reader) {
-		err := tradeReader.Unsubscribe()
-
-		if err != nil {
-			log.Fatal(err)
-		}
+		_ = tradeReader.Unsubscribe()
 	}(tradeReader)
+
+	barWriter := bar.NewWriter(configuration)
+	defer barWriter.Close()
+
+	tradeWriter := trade.NewWriter(configuration)
+	defer tradeWriter.Close()
 
 	go func() {
 		for {

@@ -1,4 +1,4 @@
-package bar
+package models
 
 import (
 	"time"

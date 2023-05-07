@@ -2,13 +2,13 @@ package equity
 
 import (
 	"github.com/alpacahq/alpaca-trade-api-go/v3/marketdata"
-	"github.com/phoobynet/market-ripper/snapshot"
+	"github.com/phoobynet/market-ripper/snapshot/models"
 )
 
 func Adapt(
 	symbol string,
 	equitySnapshot *marketdata.Snapshot,
-) *snapshot.Snapshot {
+) *models.Snapshot {
 	if symbol == "" {
 		return nil
 	}
@@ -29,7 +29,7 @@ func Adapt(
 		return nil
 	}
 
-	return &snapshot.Snapshot{
+	return &models.Snapshot{
 		Symbol:            symbol,
 		PreviousOpen:      previousDailyBar.Open,
 		PreviousHigh:      previousDailyBar.High,

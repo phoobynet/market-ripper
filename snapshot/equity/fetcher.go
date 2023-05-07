@@ -3,7 +3,7 @@ package equity
 import (
 	"github.com/alpacahq/alpaca-trade-api-go/v3/marketdata"
 	"github.com/phoobynet/market-ripper/asset"
-	"github.com/phoobynet/market-ripper/snapshot"
+	"github.com/phoobynet/market-ripper/snapshot/models"
 	"github.com/samber/lo"
 )
 
@@ -21,8 +21,8 @@ func NewFetcher(assetRepository *asset.Repository, marketDataClient *marketdata.
 	}
 }
 
-func (f *Fetcher) Fetch(symbols []string) (map[string]snapshot.Snapshot, error) {
-	snapshots := make(map[string]snapshot.Snapshot)
+func (f *Fetcher) Fetch(symbols []string) (map[string]models.Snapshot, error) {
+	snapshots := make(map[string]models.Snapshot)
 
 	symbolChunks := lo.Chunk(symbols, chunkSize)
 

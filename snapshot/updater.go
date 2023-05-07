@@ -7,6 +7,7 @@ import (
 	"github.com/phoobynet/market-ripper/config"
 	"github.com/phoobynet/market-ripper/snapshot/crypto"
 	"github.com/phoobynet/market-ripper/snapshot/equity"
+	"github.com/phoobynet/market-ripper/snapshot/models"
 	"github.com/samber/lo"
 )
 
@@ -34,19 +35,19 @@ func NewUpdater(
 }
 
 func (u *Updater) Update() error {
-	var snapshots map[string]Snapshot
+	var snapshots map[string]models.Snapshot
 	symbolsChunks := lo.Chunk(u.config.Symbols, chunkSize)
 
-	var fetch func([]string) (map[string]Snapshot, error)
+	var fetcher Fetcher
 
 	if u.config.Class == alpaca.USEquity {
-		fetch = u.equityFetcher.Fetch
+		fetcher = u.equityFetcher
 	} else {
-		fetch = u.cryptoFetcher.Fetch
+		fetcher = u.cryptoFetcher
 	}
 
 	for _, symbolsChunk := range symbolsChunks {
-		snapshotsInChunk, err := fetch(symbolsChunk)
+		snapshotsInChunk, err := fetcher.Fetch(symbolsChunk)
 
 		if err != nil {
 			return err
@@ -55,5 +56,5 @@ func (u *Updater) Update() error {
 		snapshots = snapshotsInChunk
 	}
 
-	return u.snapshotRepository.update(snapshots)
+	return u.snapshotRepository.upsert(snapshots)
 }
