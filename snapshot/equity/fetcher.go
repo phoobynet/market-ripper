@@ -9,19 +9,19 @@ import (
 
 const chunkSize = 50
 
-type Fetch struct {
+type Fetcher struct {
 	assetRepository  *asset.Repository
 	marketDataClient *marketdata.Client
 }
 
-func NewFetch(assetRepository *asset.Repository, marketDataClient *marketdata.Client) *Fetch {
-	return &Fetch{
+func NewFetcher(assetRepository *asset.Repository, marketDataClient *marketdata.Client) *Fetcher {
+	return &Fetcher{
 		assetRepository:  assetRepository,
 		marketDataClient: marketDataClient,
 	}
 }
 
-func (f *Fetch) Fetch(symbols []string) (map[string]snapshot.Snapshot, error) {
+func (f *Fetcher) Fetch(symbols []string) (map[string]snapshot.Snapshot, error) {
 	snapshots := make(map[string]snapshot.Snapshot)
 
 	symbolChunks := lo.Chunk(symbols, chunkSize)

@@ -24,7 +24,7 @@ type Writer struct {
 }
 
 func NewWriter(configuration *config.Config) *Writer {
-	sender, err := questdb.NewLineSender(context.TODO(), configuration.GetIngressAddress())
+	sender, err := questdb.NewLineSender(context.TODO(), configuration.IngressAddress())
 
 	if err != nil {
 		log.Fatalf("Error initializing lineSender: %v", err)

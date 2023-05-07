@@ -1,13 +1,22 @@
 package main
 
 import (
+	"context"
 	"flag"
+	"github.com/alpacahq/alpaca-trade-api-go/v3/alpaca"
+	"github.com/alpacahq/alpaca-trade-api-go/v3/marketdata"
+	"github.com/alpacahq/alpaca-trade-api-go/v3/marketdata/stream"
+	"github.com/phoobynet/market-ripper/asset"
 	"github.com/phoobynet/market-ripper/bar"
+	barCrypto "github.com/phoobynet/market-ripper/bar/crypto"
+	barEquity "github.com/phoobynet/market-ripper/bar/equity"
 	"github.com/phoobynet/market-ripper/config"
-	"github.com/phoobynet/market-ripper/query"
-	"github.com/phoobynet/market-ripper/reader"
+	"github.com/phoobynet/market-ripper/database"
+	"github.com/phoobynet/market-ripper/snapshot"
 	"github.com/phoobynet/market-ripper/trade"
-	"github.com/phoobynet/market-ripper/writer"
+	tradeCrypto "github.com/phoobynet/market-ripper/trade/crypto"
+	tradeEquity "github.com/phoobynet/market-ripper/trade/equity"
+	"gorm.io/gorm"
 	"log"
 	"os"
 	"os/signal"
@@ -46,31 +55,59 @@ func main() {
 		configuration,
 	)
 
-	query.Connect(configuration)
-	defer query.Disconnect()
+	alpacaClient := alpaca.NewClient(alpaca.ClientOpts{})
+	marketDataClient := marketdata.NewClient(marketdata.ClientOpts{})
 
-	assetRepository := query.NewAssetRepository()
+	stocksClientContext, stocksClientCancel := context.WithCancel(context.Background())
+	defer stocksClientCancel()
+	stocksClient := stream.NewStocksClient(marketdata.SIP)
 
-	if assetRepository.Count() == 0 || assetRepository.IsStale(-24*time.Hour) {
-		assetReader := reader.NewAssetReader()
-		assets := assetReader.GetActive()
+	err = stocksClient.Connect(stocksClientContext)
 
-		assetWriter := writer.NewAssetWriter(configuration)
-		defer assetWriter.Close()
-		assetWriter.Write(assets)
+	if err != nil {
+		log.Fatal(err)
+	} else {
+		log.Println("Connected to stocks client")
 	}
 
-	snapshotsRepository := query.NewSnapshotRepository(configuration)
-	snapshotsRepository.Truncate()
+	cryptoClientContext, cryptoClientCancel := context.WithCancel(context.Background())
+	defer cryptoClientCancel()
+	cryptoClient := stream.NewCryptoClient("us")
+	err = cryptoClient.Connect(cryptoClientContext)
 
-	snapshotReader := reader.NewSnapshotReader(
-		configuration,
-		assetRepository,
-	)
-	snapshots := snapshotReader.Read()
-	snapshotWriter := writer.NewSnapshotWriter(configuration)
-	defer snapshotWriter.Close()
-	snapshotWriter.Write(snapshots)
+	if err != nil {
+		log.Fatal(err)
+	} else {
+		log.Println("Connected to crypto client")
+	}
+
+	pgConnection, err := database.Connect(configuration)
+
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	defer func(pgConnection *gorm.DB) {
+		db, err := pgConnection.DB()
+
+		if err == nil {
+			_ = db.Close()
+		}
+	}(pgConnection)
+
+	assetRepository, err := asset.Prepare(pgConnection, alpacaClient)
+
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	snapshotRepository, err := snapshot.NewRepository(pgConnection)
+
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	snapshotUpdater, err := snapshot.NewUpdater(configuration, assetRepository, marketDataClient, snapshotRepository)
 
 	barWriter := bar.NewWriter(configuration)
 	defer barWriter.Close()
@@ -89,36 +126,81 @@ func main() {
 
 	defer snapshotRefreshTimer.Stop()
 
-	var streamingTradesChan = make(
+	var tradesChannel = make(
 		chan trade.Trade,
 		100_000,
 	)
 
-	var streamingBarsChan = make(
+	var barsChannel = make(
 		chan bar.Bar,
 		20_000,
 	)
 
-	// Class reader
-	classReader := reader.CreateClassReader(configuration)
-	defer classReader.Unsubscribe()
-	go func() {
-		classReader.Subscribe(
-			streamingTradesChan,
-			streamingBarsChan,
-		)
+	var barReader bar.Reader
+	var tradeReader trade.Reader
 
+	if configuration.Class == "us_equity" {
+		barReader, err = barEquity.NewReader(configuration, stocksClient)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		tradeReader, err = tradeEquity.NewReader(configuration, stocksClient)
+
+		if err != nil {
+			log.Fatal(err)
+		}
+	} else {
+		barReader, err = barCrypto.NewReader(configuration, cryptoClient)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		tradeReader, err = tradeCrypto.NewReader(configuration, cryptoClient)
+
+		if err != nil {
+			log.Fatal(err)
+		}
+	}
+
+	err = barReader.Subscribe(barsChannel)
+
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	err = tradeReader.Subscribe(tradesChannel)
+
+	defer func(barReader bar.Reader) {
+		err := barReader.Unsubscribe()
+
+		if err != nil {
+			log.Fatal(err)
+		}
+	}(barReader)
+
+	defer func(tradeReader trade.Reader) {
+		err := tradeReader.Unsubscribe()
+
+		if err != nil {
+			log.Fatal(err)
+		}
+	}(tradeReader)
+
+	go func() {
 		for {
 			select {
-			case t := <-streamingTradesChan:
+			case t := <-tradesChannel:
 				tradeWriter.Write(t)
-			case b := <-streamingBarsChan:
+			case b := <-barsChannel:
 				barWriter.Write(b)
 			case <-snapshotRefreshTimer.C:
 				go func() {
-					log.Println("Updating snapshots...")
-					snapshots = snapshotReader.Read()
-					snapshotsRepository.Update(snapshots)
+					err := snapshotUpdater.Update()
+
+					if err != nil {
+						log.Printf("Error updating snapshots: %s", err)
+					}
 				}()
 			}
 		}

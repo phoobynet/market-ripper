@@ -1,1 +1,23 @@
-# TODO
+version: '3.9'
+services:
+  mongo:
+    image: mongo
+    container_name: mongo
+    restart: always
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+  quest:
+    image: questdb/questdb
+    container_name: quest
+    restart: always
+    ports:
+      - "8080:8080"
+    depends_on:
+      - mongo
+
+volumes:
+  mongo_data:
+  quest_db:
+

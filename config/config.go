@@ -16,12 +16,13 @@ type Config struct {
 	Title                       string
 	Symbols                     []string
 	Class                       alpaca.AssetClass
-	DBHost                      string `toml:"db_host"`
-	DBILPPort                   string `toml:"db_ilp_port"`
-	DBPGPort                    string `toml:"db_pg_port"`
+	DBQuestHost                 string `toml:"db_quest_host"`
+	DBQuestILPPort              string `toml:"db_quest_ilp_port"`
+	DBQuestPGPort               string `toml:"db_quest_pg_port"`
 	SnapshotRefreshIntervalMins int    `toml:"snapshot_refresh_interval_mins"`
 }
 
+// Load loads a configuration file.
 func Load(configPath string) (*Config, error) {
 	file.MustExist(configPath)
 
@@ -52,34 +53,31 @@ func Load(configPath string) (*Config, error) {
 }
 
 func (c *Config) String() string {
-	return fmt.Sprintf(
-		"title: %s, class: %s, symbols: %d, db_host: %s, db_ilp_port: %s, db_pg_port: %s, snapshot_refresh_interval_mins: %d",
-		c.Title,
-		c.Class,
-		len(c.Symbols),
-		c.DBHost,
-		c.DBILPPort,
-		c.DBPGPort,
-		c.SnapshotRefreshIntervalMins,
-	)
+	return fmt.Sprintf("%+v", *c)
 }
 
-func (c *Config) GetIngressAddress() questdb.LineSenderOption {
+// IngressAddress returns a questdb.LineSenderOption with the address set to the ingress address.
+func (c *Config) IngressAddress() questdb.LineSenderOption {
 	return questdb.WithAddress(
 		fmt.Sprintf(
 			"%s:%s",
-			c.DBHost,
-			c.DBILPPort,
+			c.DBQuestHost,
+			c.DBQuestILPPort,
 		),
 	)
 }
 
-func (c *Config) GetPGAddress() string {
+// PGAddress returns a postgresql connection string - used for SQL (ish) queries.
+func (c *Config) PGAddress() string {
 	return fmt.Sprintf(
 		"postgresql://admin:quest@%s:%s/qdb",
-		c.DBHost,
-		c.DBPGPort,
+		c.DBQuestHost,
+		c.DBQuestPGPort,
 	)
+}
+
+func (c *Config) DSN() string {
+	return fmt.Sprintf("host=%s port=%s user=admin password=quest dbname=qdb sslmode=disable", c.DBQuestHost, c.DBQuestPGPort)
 }
 
 // clean removes any invalid characters from the ticker symbols, trims whitespace and converts to uppercase.
@@ -115,16 +113,16 @@ func (c *Config) validate() error {
 		return errors.New("symbols is required")
 	}
 
-	if c.DBHost == "" {
-		return errors.New("db_host is required")
+	if c.DBQuestHost == "" {
+		return errors.New("db_quest_host is required")
 	}
 
-	if c.DBILPPort == "" {
-		return errors.New("db_ilp_port is required")
+	if c.DBQuestILPPort == "" {
+		return errors.New("db_quest_ilp_port is required")
 	}
 
-	if c.DBPGPort == "" {
-		return errors.New("db_pg_port is required")
+	if c.DBQuestPGPort == "" {
+		return errors.New("db_quest_pg_port is required")
 	}
 
 	return nil

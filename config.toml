@@ -1,9 +1,7 @@
 title = "S & P 500"
-db_host = "192.168.1.66"
-db_ilp_port = "9009"
-db_pg_port = "8812"
-db_snaphost_port = "27017"
-db_snapshot_host = "192.168.1.66"
+db_quest_host = "192.168.1.66"
+db_quest_ilp_port = "9009"
+db_quest_pg_port = "8812"
 
 snapshot_refresh_interval_mins = 1
 
