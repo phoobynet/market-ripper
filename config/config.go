@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"github.com/alpacahq/alpaca-trade-api-go/v3/alpaca"
 	"github.com/pelletier/go-toml/v2"
-	"github.com/phoobynet/market-ripper/file"
 	"github.com/phoobynet/market-ripper/ticker"
 	"github.com/questdb/go-questdb-client"
 	"log"
@@ -24,7 +23,7 @@ type Config struct {
 
 // Load loads a configuration file.
 func Load(configPath string) (*Config, error) {
-	file.MustExist(configPath)
+	mustExist(configPath)
 
 	var config *Config
 
@@ -78,6 +77,7 @@ func (c *Config) PGAddress() string {
 	)
 }
 
+// DSN returns a postgresql connection string in a DSN style suitable for Gorm connections.
 func (c *Config) DSN() string {
 	return fmt.Sprintf("host=%s port=%s user=admin password=quest dbname=qdb sslmode=disable", c.DBQuestHost, c.DBQuestPGPort)
 }
@@ -127,4 +127,14 @@ func (c *Config) validate() error {
 	}
 
 	return nil
+}
+
+func mustExist(filePath string) {
+	if _, err := os.Stat(filePath); err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			panic(fmt.Errorf("file \"%s\" does not exist", filePath))
+		} else {
+			panic(err)
+		}
+	}
 }

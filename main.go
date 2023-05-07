@@ -12,11 +12,11 @@ import (
 	barEquity "github.com/phoobynet/market-ripper/bar/equity"
 	"github.com/phoobynet/market-ripper/bar/models"
 	"github.com/phoobynet/market-ripper/config"
-	"github.com/phoobynet/market-ripper/database"
 	"github.com/phoobynet/market-ripper/snapshot"
 	"github.com/phoobynet/market-ripper/trade"
 	tradeCrypto "github.com/phoobynet/market-ripper/trade/crypto"
 	tradeEquity "github.com/phoobynet/market-ripper/trade/equity"
+	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	"log"
 	"os"
@@ -96,7 +96,7 @@ func main() {
 	log.Println("Connected to crypto client")
 
 	// Connect to QuestDB database using the Postgres protocol
-	pgConnection, err := database.Connect(configuration)
+	pgConnection, err := gorm.Open(postgres.Open(configuration.DSN()), &gorm.Config{})
 	fatalOnErr(err)
 
 	defer func(pgConnection *gorm.DB) {
