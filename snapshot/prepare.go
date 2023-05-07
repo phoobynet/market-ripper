@@ -12,6 +12,8 @@ import (
 	"gorm.io/gorm"
 )
 
+// Prepare prepares the snapshot repository and updater
+// The snapshot repository is populated with the latest snapshots
 func Prepare(
 	configuration *config.Config,
 	db *gorm.DB,

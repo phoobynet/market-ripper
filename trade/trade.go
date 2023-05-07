@@ -4,6 +4,7 @@ import (
 	"time"
 )
 
+// Trade is a generic trade struct that can be used for either crypto or equity trades
 type Trade struct {
 	Class     string    `json:"class"`
 	Symbol    string    `json:"S"`

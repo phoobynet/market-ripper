@@ -5,8 +5,7 @@ import (
 	"github.com/phoobynet/market-ripper/bar/models"
 )
 
-type StreamBarAdapter = func(b stream.CryptoBar) models.Bar
-
+// Adapt adapts a stream.CryptoBar to a models.Bar
 func Adapt(b stream.CryptoBar) models.Bar {
 	return models.Bar{
 		Class:      "c",

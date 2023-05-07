@@ -2,7 +2,7 @@ package ticker
 
 import "strings"
 
-// Clean - removes any invalid characters from the ticker symbols, trims whitespace and converts to uppercase.
+// Clean removes any invalid characters from the ticker symbols, trims whitespace and converts to uppercase.
 func Clean(ticker string) string {
 	var sb strings.Builder
 	for _, c := range ticker {

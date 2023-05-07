@@ -4,6 +4,7 @@ import (
 	"time"
 )
 
+// Bar is the model for a bar which could be either a crypto bar or an equity bar
 type Bar struct {
 	Class      string    `json:"class"`
 	Symbol     string    `json:"S"`

@@ -9,11 +9,13 @@ import (
 
 const chunkSize = 50
 
+// Fetcher is an equity snapshot fetcher
 type Fetcher struct {
 	assetRepository  *asset.Repository
 	marketDataClient *marketdata.Client
 }
 
+// NewFetcher creates a new equity snapshot fetcher
 func NewFetcher(assetRepository *asset.Repository, marketDataClient *marketdata.Client) *Fetcher {
 	return &Fetcher{
 		assetRepository:  assetRepository,
@@ -21,6 +23,7 @@ func NewFetcher(assetRepository *asset.Repository, marketDataClient *marketdata.
 	}
 }
 
+// Fetch fetches equity snapshots for the given symbols and converts them to models.Snapshot
 func (f *Fetcher) Fetch(symbols []string) (map[string]models.Snapshot, error) {
 	snapshots := make(map[string]models.Snapshot)
 

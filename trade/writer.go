@@ -11,6 +11,7 @@ import (
 	"time"
 )
 
+// Writer is a trade writer
 type Writer struct {
 	inputBuffer      []Trade
 	writeTicker      *time.Ticker
@@ -23,6 +24,7 @@ type Writer struct {
 	lineSender       *questdb.LineSender
 }
 
+// NewWriter creates a new trade writer
 func NewWriter(configuration *config.Config) *Writer {
 	sender, err := questdb.NewLineSender(context.TODO(), configuration.IngressAddress())
 
@@ -61,6 +63,7 @@ func NewWriter(configuration *config.Config) *Writer {
 	return tradeWriter
 }
 
+// Write writes a trade
 func (b *Writer) Write(theTrade Trade) {
 	b.writeLock.Lock()
 	defer b.writeLock.Unlock()
@@ -68,6 +71,7 @@ func (b *Writer) Write(theTrade Trade) {
 	b.inputBuffer = append(b.inputBuffer, theTrade)
 }
 
+// Close closes the writer
 func (b *Writer) Close() {
 	b.writeTicker.Stop()
 	b.logTicker.Stop()

@@ -6,10 +6,12 @@ import (
 	"gorm.io/gorm"
 )
 
+// Repository is a repository for assets.
 type Repository struct {
 	db *gorm.DB
 }
 
+// NewRepository creates a new Repository instance.
 func NewRepository(db *gorm.DB) (*Repository, error) {
 	return &Repository{
 		db: db,
@@ -23,6 +25,7 @@ func (r *Repository) count() (int64, error) {
 	return count, err
 }
 
+// IsEmpty checks if the repository is empty.
 func (r *Repository) IsEmpty() (bool, error) {
 	count, err := r.count()
 
@@ -33,6 +36,7 @@ func (r *Repository) IsEmpty() (bool, error) {
 	return count == 0, nil
 }
 
+// GetSymbolByClass gets symbols by class, either "us_equity" or "crypto".
 func (r *Repository) GetSymbolByClass(class alpaca.AssetClass) ([]string, error) {
 	var symbols []string
 
@@ -50,6 +54,7 @@ func (r *Repository) GetSymbolByClass(class alpaca.AssetClass) ([]string, error)
 	return symbols, nil
 }
 
+// Insert inserts assets into the repository in bulk.
 func (r *Repository) Insert(assets []alpaca.Asset) error {
 	assetChunks := lo.Chunk(assets, 100)
 

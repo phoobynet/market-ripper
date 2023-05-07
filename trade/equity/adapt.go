@@ -5,8 +5,7 @@ import (
 	"github.com/phoobynet/market-ripper/trade"
 )
 
-type StreamTradeAdapter = func(t stream.Trade) trade.Trade
-
+// Adapt adapts an equity trade to a trade.Trade
 func Adapt(t stream.Trade) trade.Trade {
 	return trade.Trade{
 		Class:     "e",

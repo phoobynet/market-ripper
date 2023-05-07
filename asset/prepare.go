@@ -5,7 +5,8 @@ import (
 	"gorm.io/gorm"
 )
 
-// Prepare prepares the asset repository.  If the repository is empty, it will fill the repository
+// Prepare prepares the asset repository.  If the repository is empty, it will be populated
+// TODO: Need to have some sort of stale check
 func Prepare(db *gorm.DB, client *alpaca.Client) (*Repository, error) {
 	err := db.AutoMigrate(&alpaca.Asset{})
 
@@ -22,7 +23,7 @@ func Prepare(db *gorm.DB, client *alpaca.Client) (*Repository, error) {
 	if isEmpty, err := repository.IsEmpty(); err != nil {
 		return nil, err
 	} else if isEmpty {
-		assets, err := NewFetch(client).Fetch()
+		assets, err := NewFetcher(client).Fetch()
 
 		if err != nil {
 			return nil, err

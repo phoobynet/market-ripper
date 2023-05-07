@@ -52,6 +52,7 @@ func Load(configPath string) (*Config, error) {
 	return config, nil
 }
 
+// String returns a string representation of the config.
 func (c *Config) String() string {
 	return fmt.Sprintf("%+v", *c)
 }
@@ -68,6 +69,7 @@ func (c *Config) IngressAddress() questdb.LineSenderOption {
 }
 
 // PGAddress returns a postgresql connection string - used for SQL (ish) queries.
+// Deprecated: Use DSN() instead.
 func (c *Config) PGAddress() string {
 	return fmt.Sprintf(
 		"postgresql://admin:quest@%s:%s/qdb",
@@ -80,7 +82,6 @@ func (c *Config) DSN() string {
 	return fmt.Sprintf("host=%s port=%s user=admin password=quest dbname=qdb sslmode=disable", c.DBQuestHost, c.DBQuestPGPort)
 }
 
-// clean removes any invalid characters from the ticker symbols, trims whitespace and converts to uppercase.
 func (c *Config) clean() {
 	var cleanedSymbols []string
 	var cleanedSymbol string

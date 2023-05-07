@@ -12,6 +12,7 @@ import (
 	"time"
 )
 
+// Writer is a bar writer that writes bars to QuestDB
 type Writer struct {
 	inputBuffer      []models.Bar
 	writeTicker      *time.Ticker
@@ -24,6 +25,7 @@ type Writer struct {
 	lineSender       *questdb.LineSender
 }
 
+// NewWriter creates a new bar writer
 func NewWriter(configuration *config.Config) *Writer {
 	sender, err := questdb.NewLineSender(context.TODO(), configuration.IngressAddress())
 
@@ -62,6 +64,7 @@ func NewWriter(configuration *config.Config) *Writer {
 	return barWriter
 }
 
+// Write writes a bar to the writer
 func (b *Writer) Write(bar models.Bar) {
 	b.writeLock.Lock()
 	defer b.writeLock.Unlock()
@@ -69,6 +72,7 @@ func (b *Writer) Write(bar models.Bar) {
 	b.inputBuffer = append(b.inputBuffer, bar)
 }
 
+// Close closes the writer
 func (b *Writer) Close() {
 	b.writeTicker.Stop()
 	b.logTicker.Stop()

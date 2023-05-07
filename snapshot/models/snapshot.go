@@ -4,6 +4,7 @@ import (
 	"time"
 )
 
+// Snapshot is a snapshot of a stock or crypto
 type Snapshot struct {
 	Symbol            string
 	PreviousOpen      float64

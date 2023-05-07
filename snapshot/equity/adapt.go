@@ -5,6 +5,7 @@ import (
 	"github.com/phoobynet/market-ripper/snapshot/models"
 )
 
+// Adapt adapts an equity snapshot to a models.Snapshot
 func Adapt(
 	symbol string,
 	equitySnapshot *marketdata.Snapshot,
